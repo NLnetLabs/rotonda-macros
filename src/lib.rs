@@ -1,4 +1,6 @@
 extern crate proc_macro;
+use std::iter::Iterator;
+
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::parse_macro_input;
@@ -7,43 +9,56 @@ use syn::parse_macro_input;
 pub fn test_macro(attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as syn::ItemStruct);
     let name = &input.ident;
-    let attr = parse_macro_input!(attr as syn::ExprArray);
-    let stride_sizes = attr
-        .elems
-        .iter()
-        .enumerate()
-        .map(|(i, _e)| format_ident!("l{}", i));
 
-    let strides = attr.elems.iter().map(|e| match e {
-        syn::Expr::Lit(s) => {
-            if let syn::Lit::Int(i) = &s.lit {
-                format_ident!("Stride{}", i.base10_digits())
-            } else {
-                panic!("Expected an integer")
-            }
-        }
-        _ => {
-            panic!("Expected a literal")
-        }
-    });
+    let attr = parse_macro_input!(attr as syn::ExprTuple);
 
-    // let strides2 = attr.elems.iter();
+    let len = attr.elems.iter().len();
+    println!("{}", len);
+
+    let attrs = attr.elems.iter().collect::<Vec<_>>();
+
+    let af = match attrs[0] {
+        syn::Expr::Path(t) => t,
+        _ => panic!("Expected Family Type"),
+    };
+
+    let strides = match attrs[1] {
+        syn::Expr::Array(a) => {
+            let array = a
+                .elems
+                .iter()
+                .map(|e| match e {
+                    syn::Expr::Lit(s) => {
+                        if let syn::Lit::Int(i) = &s.lit {
+                            i.base10_parse::<u8>().unwrap()
+                        } else {
+                            panic!("Expected an integer")
+                        }
+                    }
+                    _ => {
+                        panic!("Expected a literal")
+                    }
+                })
+                .collect::<Vec<u8>>();
+            quote! { [#( #array ),*] }
+        }
+        syn::Expr::Path(s) => {
+            let array = s.path.segments[0].ident.clone();
+            quote! { #array.to_vec() }
+        }
+        _ => panic!("Expected a const or static"),
+    };
+
 
     let result = quote! {
 
-        #(pub(crate) struct #strides {
-            strides: [u8; 4],
-        })*
-
         pub(crate) struct #name {
-            #( #stride_sizes: u8, )*
+            strides: [u8; 4],
         }
 
         impl #name {
-            fn a() -> Vec<u8> {
-                // #( println!("attr={:?}", #strides2); )*
-                // #attr.to_vec()
-                vec![0,10]
+            fn a() -> impl IntoIterator<Item = u8> {
+                #strides
             }
         }
 
@@ -61,7 +76,14 @@ pub fn stride_sizes(attr: TokenStream, item: TokenStream) -> TokenStream {
     let name = &input.ident;
 
     // The arguments for the macro invocation
-    let attr = parse_macro_input!(attr as syn::ExprArray);
+    let attrs = parse_macro_input!(attr as syn::ExprTuple);
+
+    let attrs = attrs.elems.iter().collect::<Vec<_>>();
+
+    let af = match attrs[0] {
+        syn::Expr::Path(t) => t,
+        _ => panic!("Expected Family Type"),
+    };
 
     let mut strides = vec![];
     let mut strides_all_len = vec![];
@@ -73,7 +95,14 @@ pub fn stride_sizes(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let mut s_accu = 0_u8;
 
-    for (len, stride) in attr.elems.iter().enumerate() {
+    let attrs_s = match attrs[1] {
+        syn::Expr::Array(arr) => {
+            arr
+        },
+        _ => panic!("Expected an array"),
+    };
+
+    for (len, stride) in attrs_s.elems.iter().enumerate() {
         strides_all_len.push(format_ident!("l{}", len));
 
         match stride {
@@ -101,36 +130,7 @@ pub fn stride_sizes(attr: TokenStream, item: TokenStream) -> TokenStream {
             }
         }
     }
-
     
-    // let all_lens = attr.elems.iter().enumerate().map(|(stride_len, _)| {
-    //     format_ident!("l{}", stride_len)
-    // });
-    
-    // let all_lens_clone = all_lens.clone();
-
-    // let strides = attr.elems.iter().enumerate().map(|(len, e)| match e {
-    //     syn::Expr::Lit(s) => {
-    //         if let syn::Lit::Int(i) = &s.lit {
-    //             let stride_len = i.base10_digits().parse::<u8>().unwrap();
-    //             s_accu += stride_len;
-    //             strides_accu.push(s_accu);
-    //             match stride_len {
-    //                 3 => stride3.push(format_ident!("l{}", len)),
-    //                 4 => stride4.push(format_ident!("l{}", len)),
-    //                 5 => stride5.push(format_ident!("l{}", len)),
-    //                 _ => panic!("Expected a stride of 3, 4 or 5"),
-    //             };
-    //             format_ident!("Stride{}", stride_len)
-    //         } else {
-    //             panic!("Expected an integer")
-    //         }
-    //     }
-    //     _ => {
-    //         panic!("Expected a literal")
-    //     }
-    // });
-
     let struct_creation = quote! {
 
         #[derive(Debug)]
