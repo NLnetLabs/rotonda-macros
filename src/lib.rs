@@ -49,7 +49,6 @@ pub fn test_macro(attr: TokenStream, item: TokenStream) -> TokenStream {
         _ => panic!("Expected a const or static"),
     };
 
-
     let result = quote! {
 
         pub(crate) struct #name {
@@ -80,7 +79,7 @@ pub fn stride_sizes(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let attrs = attrs.elems.iter().collect::<Vec<_>>();
 
-    let af = match attrs[0] {
+    let _af = match attrs[0] {
         syn::Expr::Path(t) => t,
         _ => panic!("Expected Family Type"),
     };
@@ -90,15 +89,16 @@ pub fn stride_sizes(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut strides_all_len_accu: Vec<u8> = vec![];
     let mut strides_all_len_level = vec![];
     let mut strides_len3 = vec![];
+    let mut strides_len3_l = vec![];
     let mut strides_len4 = vec![];
+    let mut strides_len4_l = vec![];
     let mut strides_len5 = vec![];
+    let mut strides_len5_l = vec![];
 
     let mut s_accu = 0_u8;
 
     let attrs_s = match attrs[1] {
-        syn::Expr::Array(arr) => {
-            arr
-        },
+        syn::Expr::Array(arr) => arr,
         _ => panic!("Expected an array"),
     };
 
@@ -110,14 +110,23 @@ pub fn stride_sizes(attr: TokenStream, item: TokenStream) -> TokenStream {
                 if let syn::Lit::Int(i) = &s.lit {
                     let stride_len = i.base10_digits().parse::<u8>().unwrap();
                     strides_all_len_level.push(format_ident!("l{}", s_accu));
-                    strides_all_len_accu.push(s_accu);
 
                     match stride_len {
-                        3 => strides_len3.push(format_ident!("l{}", s_accu)),
-                        4 => strides_len4.push(format_ident!("l{}", s_accu)),
-                        5 => strides_len5.push(format_ident!("l{}", s_accu)),
+                        3 => {
+                            strides_len3.push(s_accu as usize);
+                            strides_len3_l.push(format_ident!("l{}", s_accu));
+                        }
+                        4 => {
+                            strides_len4.push(s_accu as usize);
+                            strides_len4_l.push(format_ident!("l{}", s_accu));
+                        }
+                        5 => {
+                            strides_len5.push(s_accu as usize);
+                            strides_len5_l.push(format_ident!("l{}", s_accu));
+                        },
                         _ => panic!("Expected a stride of 3, 4 or 5"),
                     };
+                    strides_all_len_accu.push(s_accu);
 
                     s_accu += stride_len;
                     strides.push(format_ident!("Stride{}", stride_len))
@@ -130,7 +139,7 @@ pub fn stride_sizes(attr: TokenStream, item: TokenStream) -> TokenStream {
             }
         }
     }
-    
+
     let struct_creation = quote! {
 
         #[derive(Debug)]
@@ -199,6 +208,8 @@ pub fn stride_sizes(attr: TokenStream, item: TokenStream) -> TokenStream {
                     [4, 8, 12, 16, 20, 24, 28, 0, 0, 0],  // 28
                     [4, 8, 12, 16, 20, 24, 28, 29, 0, 0], // 29
                     [4, 8, 12, 16, 20, 24, 28, 30, 0, 0], // 30
+                    [4, 8, 12, 16, 20, 24, 28, 31, 0, 0],  // 31
+                    [4, 8 , 12, 16, 20, 24, 28, 32, 0, 0], // 32
                 ][len as usize]
                     .get(level as usize)
             }
@@ -208,7 +219,7 @@ pub fn stride_sizes(attr: TokenStream, item: TokenStream) -> TokenStream {
                 id: StrideNodeId<AF>,
             ) -> &mut NodeSet<AF, Stride3> {
                 match id.get_id().1 as usize {
-                    #( #strides_len3 => &mut self.#strides_len3, )*
+                    #( #strides_len3 => &mut self.#strides_len3_l, )*
                     // 14 => &mut self.l14,
                     // 17 => &mut self.l17,
                     // 20 => &mut self.l20,
@@ -225,7 +236,7 @@ pub fn stride_sizes(attr: TokenStream, item: TokenStream) -> TokenStream {
 
             fn get_store3(&self, id: StrideNodeId<AF>) -> &NodeSet<AF, Stride3> {
                 match id.get_id().1 as usize {
-                    #( #strides_len3 => &self.#strides_len3, )*
+                    #( #strides_len3 => &self.#strides_len3_l, )*
                     // 14 => &self.l14,
                     // 17 => &self.l17,
                     // 20 => &self.l20,
@@ -245,7 +256,7 @@ pub fn stride_sizes(attr: TokenStream, item: TokenStream) -> TokenStream {
                 id: StrideNodeId<AF>,
             ) -> &mut NodeSet<AF, Stride4> {
                 match id.get_id().1 as usize {
-                    #( #strides_len4 => &mut self.#strides_len4, )*
+                    #( #strides_len4 => &mut self.#strides_len4_l, )*
                     // 10 => &mut self.l10,
                     _ => panic!(
                         "unexpected sub prefix length {} in stride size 4 ({})",
@@ -257,7 +268,7 @@ pub fn stride_sizes(attr: TokenStream, item: TokenStream) -> TokenStream {
 
             fn get_store4(&self, id: StrideNodeId<AF>) -> &NodeSet<AF, Stride4> {
                 match id.get_id().1 as usize {
-                    #( #strides_len4 => &self.#strides_len4, )*
+                    #( #strides_len4 => &self.#strides_len4_l, )*
                     // 10 => &self.l10,
                     _ => panic!(
                         "unexpected sub prefix length {} in stride size 4 ({})",
@@ -272,11 +283,11 @@ pub fn stride_sizes(attr: TokenStream, item: TokenStream) -> TokenStream {
                 id: StrideNodeId<AF>,
             ) -> &mut NodeSet<AF, Stride5> {
                 match id.get_id().1 as usize {
-                    #( #strides_len5 => &mut self.#strides_len5, )*
+                    #( #strides_len5 => &mut self.#strides_len5_l, )*
                     // 0 => &mut self.l0,
                     // 5 => &mut self.l5,
                     _ => panic!(
-                        "unexpected sub prefix length {} in stride size 3 ({})",
+                        "unexpected sub prefix length {} in stride size 5 ({})",
                         id.get_id().1,
                         id
                     ),
@@ -285,11 +296,11 @@ pub fn stride_sizes(attr: TokenStream, item: TokenStream) -> TokenStream {
 
             fn get_store5(&self, id: StrideNodeId<AF>) -> &NodeSet<AF, Stride5> {
                 match id.get_id().1 as usize {
-                    #( #strides_len5 => &self.#strides_len5, )*
+                    #( #strides_len5 => &self.#strides_len5_l, )*
                     // 0 => &self.l0,
                     // 5 => &self.l5,
                     _ => panic!(
-                        "unexpected sub prefix length {} in stride size 3 ({})",
+                        "unexpected sub prefix length {} in stride size 5 ({})",
                         id.get_id().1,
                         id
                     ),
