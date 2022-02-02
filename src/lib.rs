@@ -84,6 +84,7 @@ pub fn stride_sizes(attr: TokenStream, item: TokenStream) -> TokenStream {
         _ => panic!("Expected Family Type"),
     };
 
+    let mut strides_num: Vec<u8> = vec![];
     let mut strides = vec![];
     let mut strides_all_len = vec![];
     let mut strides_all_len_accu: Vec<u8> = vec![];
@@ -101,6 +102,7 @@ pub fn stride_sizes(attr: TokenStream, item: TokenStream) -> TokenStream {
         syn::Expr::Array(arr) => arr,
         _ => panic!("Expected an array"),
     };
+    let strides_len = attrs_s.elems.len() as u8;
 
     for (len, stride) in attrs_s.elems.iter().enumerate() {
         strides_all_len.push(format_ident!("l{}", len));
@@ -109,6 +111,7 @@ pub fn stride_sizes(attr: TokenStream, item: TokenStream) -> TokenStream {
             syn::Expr::Lit(s) => {
                 if let syn::Lit::Int(i) = &s.lit {
                     let stride_len = i.base10_digits().parse::<u8>().unwrap();
+                    strides_num.push(stride_len);
                     strides_all_len_level.push(format_ident!("l{}", s_accu));
 
                     match stride_len {
@@ -123,7 +126,7 @@ pub fn stride_sizes(attr: TokenStream, item: TokenStream) -> TokenStream {
                         5 => {
                             strides_len5.push(s_accu as usize);
                             strides_len5_l.push(format_ident!("l{}", s_accu));
-                        },
+                        }
                         _ => panic!("Expected a stride of 3, 4 or 5"),
                     };
                     strides_all_len_accu.push(s_accu);
@@ -139,6 +142,10 @@ pub fn stride_sizes(attr: TokenStream, item: TokenStream) -> TokenStream {
             }
         }
     }
+
+    let mut stride_sizes = [0; 42];
+    let (left, _right) = stride_sizes.split_at_mut(strides_len as usize);
+    left.swap_with_slice(&mut strides_num);
 
     let struct_creation = quote! {
 
@@ -307,8 +314,11 @@ pub fn stride_sizes(attr: TokenStream, item: TokenStream) -> TokenStream {
                 }
             }
 
-        }
+            fn get_stride_sizes(&self) -> [u8; 42] {
+                [ #( #stride_sizes, )*]
+            }
 
+        }
 
     };
 
