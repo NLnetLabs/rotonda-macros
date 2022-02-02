@@ -143,9 +143,36 @@ pub fn stride_sizes(attr: TokenStream, item: TokenStream) -> TokenStream {
         }
     }
 
+    // Check if the strides division makes sense
+    let mut len_to_stride_arr = [0_u8; 128];
+    strides_all_len_accu
+        .iter()
+        .zip(strides_num.iter())
+        .for_each(|(acc, s)| {
+            len_to_stride_arr[*acc as usize] = *s;
+        });
+
+    // These are the stride sizes as an array of u8s, padded with 0s to the
+    // right. It's bounded to 42 u8s to avoid having to set a const generic
+    // on the type (which would have to be carried over to its parent). So
+    // if a 0 is encountered, it's the end of the strides.
     let mut stride_sizes = [0; 42];
     let (left, _right) = stride_sizes.split_at_mut(strides_len as usize);
     left.swap_with_slice(&mut strides_num);
+
+    // let mut strides = vec![];
+    // let mut len_to_stride_size: [StrideType; 128] =
+    //     [StrideType::Stride3; 128];
+    // let mut strides_sum = 0;
+    // for s in strides_vec.iter().cycle() {
+    //     strides.push(*s);
+    //     len_to_stride_size[strides_sum as usize] = StrideType::from(*s);
+    //     strides_sum += s;
+    //     if strides_sum >= Store::AF::BITS - 1 {
+    //         break;
+    //     }
+    // }
+    // assert_eq!(strides.iter().sum::<u8>(), Store::AF::BITS);
 
     let struct_creation = quote! {
 
@@ -314,8 +341,14 @@ pub fn stride_sizes(attr: TokenStream, item: TokenStream) -> TokenStream {
                 }
             }
 
+            #[inline]
             fn get_stride_sizes(&self) -> [u8; 42] {
                 [ #( #stride_sizes, )*]
+            }
+
+            #[inline]
+            fn get_stride_for_id(&self, id: StrideNodeId<AF>) -> u8 {
+                [ #(#len_to_stride_arr, )* ][id.get_id().1 as usize]
             }
 
         }
