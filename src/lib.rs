@@ -12,10 +12,9 @@ pub fn test_macro(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let attr = parse_macro_input!(attr as syn::ExprTuple);
 
-
     let attrs = attr.elems.iter().collect::<Vec<_>>();
 
-    let ip_af = match attrs[0] {
+    let _ip_af = match attrs[0] {
         syn::Expr::Type(t) => t,
         _ => panic!("Expected Family Type"),
     };
@@ -65,23 +64,25 @@ pub fn test_macro(attr: TokenStream, item: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
-pub fn stride_sizes(attr: TokenStream, item: TokenStream) -> TokenStream {
-    // The struct that's defined underneath the macro invocation
-    let input = parse_macro_input!(item as syn::ItemStruct);
-
-    // The name of that struct
-    let name = &input.ident;
-
+pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
     // The arguments for the macro invocation
     let attrs = parse_macro_input!(attr as syn::ExprTuple);
 
     let attrs = attrs.elems.iter().collect::<Vec<_>>();
 
+    let input = parse_macro_input!(input as syn::ItemStruct);
+    let type_name = &input.ident;
     let ip_af = match attrs[0] {
         syn::Expr::Path(t) => t,
         _ => panic!("Expected Family Type"),
     };
 
+    // The name of the Struct that we're going to generate
+    let buckets_name = if ip_af.path.is_ident("IPv4") {
+        format_ident!("NodeBuckets4")
+    } else {
+        format_ident!("NodeBuckets6")
+    };
     let store_bits = if ip_af.path.is_ident("IPv4") {
         quote! {
 
@@ -287,6 +288,7 @@ pub fn stride_sizes(attr: TokenStream, item: TokenStream) -> TokenStream {
         _ => panic!("Expected an array"),
     };
     let strides_len = attrs_s.elems.len() as u8;
+    let first_stride_size = &attrs_s.elems[0];
 
     for (len, stride) in attrs_s.elems.iter().enumerate() {
         strides_all_len.push(format_ident!("l{}", len));
@@ -361,9 +363,11 @@ pub fn stride_sizes(attr: TokenStream, item: TokenStream) -> TokenStream {
     let struct_creation = quote! {
 
         #[derive(Debug)]
-        pub(crate) struct #name<AF: AddressFamily> {
+        pub(crate) struct #buckets_name<AF: AddressFamily> {
             # ( #strides_all_len_level: NodeSet<#ip_af, #strides>, )*
             _af: PhantomData<AF>,
+            stride_sizes: [u8; 42],
+            strides_len: u8
             // l0: NodeSet<AF, Stride5>,
             // l5: NodeSet<AF, Stride5>,
             // l10: NodeSet<AF, Stride4>,
@@ -379,11 +383,13 @@ pub fn stride_sizes(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let struct_impl = quote! {
 
-        impl<AF: AddressFamily> FamilyBuckets<#ip_af> for #name<AF> {
+        impl<AF: AddressFamily> FamilyBuckets<#ip_af> for #buckets_name<AF> {
             fn init() -> Self {
-                #name {
+                #buckets_name {
                     #( #strides_all_len_level: NodeSet::init(1 << Self::len_to_store_bits(#strides_all_len_accu, 0).unwrap() ), )*
-                    _af: PhantomData
+                    _af: PhantomData,
+                    stride_sizes: [ #( #stride_sizes, )*],
+                    strides_len: #strides_len
                     // l0: NodeSet::init(1 << 5),
                     // l5: NodeSet::init(1 << 10),
                     // l10: NodeSet::init(1 << 12),
@@ -490,8 +496,8 @@ pub fn stride_sizes(attr: TokenStream, item: TokenStream) -> TokenStream {
             }
 
             #[inline]
-            fn get_stride_sizes(&self) -> [u8; 42] {
-                [ #( #stride_sizes, )*]
+            fn get_stride_sizes(&self) -> &[u8] {
+                &self.stride_sizes[0..self.strides_len as usize]
             }
 
             #[inline]
@@ -501,13 +507,26 @@ pub fn stride_sizes(attr: TokenStream, item: TokenStream) -> TokenStream {
 
             #[inline]
             #store_bits
+
+            fn get_strides_len() -> u8 {
+                #strides_len
+            }
+
+            fn get_first_stride_size() -> u8 {
+                #first_stride_size
+            }
         }
 
+    };
+
+    let type_alias = quote! {
+        type #type_name<Meta> = TreeBitMap<CustomAllocStorage<#ip_af, Meta, #buckets_name<#ip_af>>>;
     };
 
     let result = quote! {
         #struct_creation
         #struct_impl
+        #type_alias
     };
 
     TokenStream::from(result)
