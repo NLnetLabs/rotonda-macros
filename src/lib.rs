@@ -63,6 +63,12 @@ pub fn test_macro(attr: TokenStream, item: TokenStream) -> TokenStream {
     TokenStream::from(result)
 }
 
+#[proc_macro]
+pub fn test_macro2(input: TokenStream) -> TokenStream {
+    input
+}
+
+
 #[proc_macro_attribute]
 pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
     // The arguments for the macro invocation
@@ -78,10 +84,14 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
     };
 
     // The name of the Struct that we're going to generate
+    // We'll prepend it with the name of the TreeBitMap struct
+    // that the user wants, so that our macro is a little bit
+    // more hygienic, and the user can create multiple types
+    // of TreeBitMap structs with different stride sizes.
     let buckets_name = if ip_af.path.is_ident("IPv4") {
-        format_ident!("NodeBuckets4")
+        format_ident!("{}NodeBuckets4", type_name)
     } else {
-        format_ident!("NodeBuckets6")
+        format_ident!("{}NodeBuckets6", type_name)
     };
     let store_bits = if ip_af.path.is_ident("IPv4") {
         quote! {
@@ -527,6 +537,199 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
         #struct_creation
         #struct_impl
         #type_alias
+    };
+
+    TokenStream::from(result)
+}
+
+#[proc_macro_attribute]
+pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(item as syn::ItemStruct);
+    let store_name = &input.ident;
+
+    let attr = parse_macro_input!(attr as syn::ExprTuple);
+    let attrs = attr.elems.iter().collect::<Vec<_>>();
+    let strides4 = attrs[0].clone();
+    let strides6 = attrs[1].clone();
+    let strides4_name = format_ident!("{}IPv4", store_name);
+    let strides6_name = format_ident!("{}IPv6", store_name);
+
+    let create_strides = quote! {
+        #[stride_sizes((IPv4, #strides4))]
+        struct #strides4_name;
+
+        #[stride_sizes((IPv6, #strides6))]
+        struct #strides6_name;
+    };
+
+    let store = quote! {
+        /// A concurrently read/writable, lock-free Prefix Store, for use in a multi-threaded context.
+        pub struct #store_name<
+            Meta: routecore::record::Meta + MergeUpdate,
+        > {
+            v4: #strides4_name<Meta>,
+            v6: #strides6_name<Meta>,
+        }
+
+        impl<
+                Meta: routecore::record::Meta + MergeUpdate,
+            > Default for Store<Meta>
+        {
+            fn default() -> Self {
+                Self::new()
+            }
+        }
+
+        impl<
+                Meta: routecore::record::Meta + MergeUpdate,
+            > Store<Meta>
+        {
+            /// Creates a new empty store with a tree for IPv4 and on for IPv6.
+            ///
+            /// You'll have to provide the stride sizes per address family and the
+            /// meta-data type. Some meta-data type are included with this crate.
+            ///
+            /// The stride-sizes can be any of [3,4,5], and they should add up
+            /// to the total number of bits in the address family (32 for IPv4 and
+            /// 128 for IPv6). Stride sizes in the array will be repeated if the sum
+            /// of them falls short of the total number of bits for the address
+            /// family.
+            ///
+            /// # Example
+            /// ```
+            /// use rotonda_store::MultiThreadedStore;
+            /// use rotonda_store::PrefixAs;
+            ///
+            /// let store = MultiThreadedStore::<PrefixAs>::new(
+            ///     vec![3, 3, 3, 3, 3, 3, 3, 3, 4, 4], vec![5,4,3,4]
+            /// );
+            /// ```
+            pub fn new() -> Self {
+                Store {
+                    v4: #strides4_name::new(),
+                    v6: #strides6_name::new(),
+                }
+            }
+        }
+
+        impl<
+                'a,
+                Meta: routecore::record::Meta + MergeUpdate,
+            > Store<Meta>
+        {
+            pub fn match_prefix(
+                &'a self,
+                prefix_store_locks: (
+                    &'a PrefixHashMap<IPv4, Meta>,
+                    &'a PrefixHashMap<IPv6, Meta>,
+                ),
+                search_pfx: &Prefix,
+                options: &MatchOptions,
+            ) -> QueryResult<'a, Meta> {
+                match search_pfx.addr() {
+                    std::net::IpAddr::V4(addr) => self.v4.match_prefix(
+                        prefix_store_locks.0,
+                        &InternalPrefixRecord::<IPv4, NoMeta>::new(
+                            addr.into(),
+                            search_pfx.len(),
+                        ),
+                        options,
+                    ),
+                    std::net::IpAddr::V6(addr) => self.v6.match_prefix(
+                        prefix_store_locks.1,
+                        &InternalPrefixRecord::<IPv6, NoMeta>::new(
+                            addr.into(),
+                            search_pfx.len(),
+                        ),
+                        options,
+                    ),
+                }
+            }
+
+            pub fn insert(
+                &mut self,
+                prefix: &Prefix,
+                meta: Meta,
+            ) -> Result<(), std::boxed::Box<dyn std::error::Error>> {
+                match prefix.addr() {
+                    std::net::IpAddr::V4(addr) => {
+                        self.v4.insert(InternalPrefixRecord::new_with_meta(
+                            addr.into(),
+                            prefix.len(),
+                            meta,
+                        ))
+                    }
+                    std::net::IpAddr::V6(addr) => {
+                        self.v6.insert(InternalPrefixRecord::new_with_meta(
+                            addr.into(),
+                            prefix.len(),
+                            meta,
+                        ))
+                    }
+                }
+            }
+
+            pub fn prefixes_iter(&self) -> HashMapPrefixRecordIterator<Meta> {
+                let rs4 = self.v4.store.prefixes.iter();
+                let rs6 = self.v6.store.prefixes.iter();
+
+                crate::HashMapPrefixRecordIterator::<Meta> {
+                    v4: Some(rs4),
+                    v6: rs6,
+                }
+            }
+
+            pub fn acquire_prefixes_rwlock_read(
+                &'a self,
+            ) -> (
+                &'a DashMap<PrefixId<IPv4>, InternalPrefixRecord<IPv4, Meta>>,
+                &'a DashMap<PrefixId<IPv6>, InternalPrefixRecord<IPv6, Meta>>,
+            ) {
+                (&self.v4.store.prefixes, &self.v6.store.prefixes)
+            }
+
+            pub fn prefixes_len(&self) -> usize {
+                self.v4.store.prefixes.len() + self.v6.store.prefixes.len()
+            }
+
+            pub fn prefixes_v4_len(&self) -> usize {
+                self.v4.store.prefixes.len()
+            }
+
+            pub fn prefixes_v6_len(&self) -> usize {
+                self.v6.store.prefixes.len()
+            }
+
+            pub fn nodes_len(&self) -> usize {
+                self.v4.store.get_nodes_len() + self.v6.store.get_nodes_len()
+            }
+
+            pub fn nodes_v4_len(&self) -> usize {
+                self.v4.store.get_nodes_len()
+            }
+
+            pub fn nodes_v6_len(&self) -> usize {
+                self.v6.store.get_nodes_len()
+            }
+
+            #[cfg(feature = "cli")]
+            pub fn print_funky_stats(&self) {
+                println!("{}", self.v4);
+                println!("{}", self.v6);
+            }
+
+            pub fn stats(&self) -> Stats {
+                Stats {
+                    v4: &self.v4.stats,
+                    v6: &self.v6.stats,
+                }
+            }
+        }
+    };
+
+    let result = quote! {
+        #create_strides
+        #store
     };
 
     TokenStream::from(result)
