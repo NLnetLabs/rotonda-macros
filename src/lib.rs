@@ -555,12 +555,17 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
     let strides6_name = format_ident!("{}IPv6", store_name);
 
     let create_strides = quote! {
-        #[stride_sizes((IPv4, #strides4))]
-        struct #strides4_name;
+            use ::std::marker::PhantomData;
+            use ::dashmap::DashMap;
+            use ::routecore::record::{MergeUpdate, NoMeta};
+            use ::routecore::addr::Prefix;
 
-        #[stride_sizes((IPv6, #strides6))]
-        struct #strides6_name;
-    };
+            #[stride_sizes((IPv4, #strides4))]
+            struct #strides4_name;
+
+            #[stride_sizes((IPv6, #strides6))]
+            struct #strides6_name;
+        };
 
     let store = quote! {
         /// A concurrently read/writable, lock-free Prefix Store, for use in a multi-threaded context.
