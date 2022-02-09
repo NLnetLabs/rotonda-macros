@@ -14,14 +14,16 @@ pub fn test_macro(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let attrs = attr.elems.iter().collect::<Vec<_>>();
 
-    let _ip_af = match attrs[0] {
+    let ip_af = match attrs[0] {
         syn::Expr::Type(t) => t,
         _ => panic!("Expected Family Type"),
     };
 
     let strides = match attrs[1] {
         syn::Expr::Array(a) => {
-            let array = a
+            // 1. Try to parse the second expression of the TokenStream as an
+            //    array of u8. Panic if that fails.
+            let strides_vec = a
                 .elems
                 .iter()
                 .map(|e| match e {
@@ -37,7 +39,33 @@ pub fn test_macro(attr: TokenStream, item: TokenStream) -> TokenStream {
                     }
                 })
                 .collect::<Vec<u8>>();
-            quote! { [#( #array ),*] }
+
+            // 2. Check if the strides division makes sense
+            let af_bits: u8 = if let syn::Expr::Path(p) = &*ip_af.expr {
+                match p.path.get_ident() {
+                    Some(i) => match i.to_string().as_str() {
+                        "IPv4" => 32_u8,
+                        "IPv6" => 128_u8,
+                        _ => panic!("Expected Ipv4 or Ipv6"),
+                    },
+                    None => panic!("Expected an identifier"),
+                }
+            } else {
+                panic!("Expected a path")
+            };
+
+            let mut strides = vec![];
+            let mut strides_sum = 0;
+            for s in strides_vec.iter().cycle() {
+                strides.push(*s);
+                strides_sum += s;
+                if strides_sum >= af_bits - 1 {
+                    break;
+                }
+            }
+            assert_eq!(strides_vec.iter().sum::<u8>(), af_bits);
+
+            quote! { [#( #strides ),*] }
         }
         syn::Expr::Path(s) => {
             let array = s.path.segments[0].ident.clone();
@@ -63,11 +91,11 @@ pub fn test_macro(attr: TokenStream, item: TokenStream) -> TokenStream {
     TokenStream::from(result)
 }
 
+
 #[proc_macro]
 pub fn test_macro2(input: TokenStream) -> TokenStream {
     input
 }
-
 
 #[proc_macro_attribute]
 pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
