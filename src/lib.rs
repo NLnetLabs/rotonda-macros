@@ -606,7 +606,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
 
         impl<
                 Meta: routecore::record::Meta + MergeUpdate,
-            > Default for Store<Meta>
+            > Default for #store_name<Meta>
         {
             fn default() -> Self {
                 Self::new()
@@ -615,7 +615,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
 
         impl<
                 Meta: routecore::record::Meta + MergeUpdate,
-            > Store<Meta>
+            > #store_name<Meta>
         {
             /// Creates a new empty store with a tree for IPv4 and on for IPv6.
             ///
@@ -638,7 +638,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// );
             /// ```
             pub fn new() -> Self {
-                Store {
+                Self {
                     v4: #strides4_name::new(),
                     v6: #strides6_name::new(),
                 }
@@ -648,7 +648,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
         impl<
                 'a,
                 Meta: routecore::record::Meta + MergeUpdate,
-            > Store<Meta>
+            > #store_name<Meta>
         {
             pub fn match_prefix(
                 &'a self,
