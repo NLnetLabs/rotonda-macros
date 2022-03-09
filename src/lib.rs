@@ -556,23 +556,27 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 ),
                 search_pfx: &Prefix,
                 options: &MatchOptions,
+                guard: &'a Guard,
             ) -> QueryResult<'a, Meta> {
+
                 match search_pfx.addr() {
                     std::net::IpAddr::V4(addr) => self.v4.match_prefix(
-                        prefix_store_locks.0,
+                        // prefix_store_locks.0,
                         &InternalPrefixRecord::<IPv4, NoMeta>::new(
                             addr.into(),
                             search_pfx.len(),
                         ),
                         options,
+                        guard
                     ),
                     std::net::IpAddr::V6(addr) => self.v6.match_prefix(
-                        prefix_store_locks.1,
+                        // prefix_store_locks.1,
                         &InternalPrefixRecord::<IPv6, NoMeta>::new(
                             addr.into(),
                             search_pfx.len(),
                         ),
                         options,
+                        guard
                     ),
                 }
             }
@@ -600,11 +604,11 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 }
             }
 
-            pub fn prefixes_iter(&self) -> HashMapPrefixRecordIterator<Meta> {
-                let rs4 = self.v4.store.prefixes.iter();
-                let rs6 = self.v6.store.prefixes.iter();
+            pub fn prefixes_iter(&'a self, guard: &'a Guard) -> impl Iterator<Item=routecore::bgp::PrefixRecord<Meta>> + 'a {
+                let rs4 = self.v4.store.prefixes_iter(guard);
+                let rs6 = self.v6.store.prefixes_iter(guard);
 
-                crate::HashMapPrefixRecordIterator::<Meta> {
+                crate::CustomAllocPrefixRecordIterator {
                     v4: Some(rs4),
                     v6: rs6,
                 }
@@ -620,15 +624,15 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             }
 
             pub fn prefixes_len(&self) -> usize {
-                self.v4.store.prefixes.len() + self.v6.store.prefixes.len()
+                self.v4.store.get_prefixes_len() + self.v6.store.get_prefixes_len()
             }
 
             pub fn prefixes_v4_len(&self) -> usize {
-                self.v4.store.prefixes.len()
+                self.v4.store.get_prefixes_len()
             }
 
             pub fn prefixes_v6_len(&self) -> usize {
-                self.v6.store.prefixes.len()
+                self.v6.store.get_prefixes_len()
             }
 
             pub fn nodes_len(&self) -> usize {
