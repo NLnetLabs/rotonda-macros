@@ -1,8 +1,10 @@
 extern crate proc_macro;
-use std::iter::Iterator;
+
+mod maps;
 
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
+use std::iter::Iterator;
 use syn::parse_macro_input;
 
 #[proc_macro_attribute]
@@ -90,7 +92,6 @@ pub fn test_macro(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     TokenStream::from(result)
 }
-
 
 #[proc_macro]
 pub fn test_macro2(input: TokenStream) -> TokenStream {
@@ -272,10 +273,18 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
 
         #[derive(Debug)]
         pub(crate) struct #buckets_name<AF: AddressFamily> {
+            // created fields for each sub-prefix (StrideNodeId) length,
+            // with hard-coded field-names, like this:
+            // l0: NodeSet<AF, Stride5>,
+            // l5: NodeSet<AF, Stride5>,
+            // l10: NodeSet<AF, Stride4>,
+            // ...
+            // l29: NodeSet<AF, Stride3>
             # ( #strides_all_len_level: NodeSet<#ip_af, #strides>, )*
             _af: PhantomData<AF>,
             stride_sizes: [u8; 42],
             strides_len: u8
+        }
 
         #[derive(Debug)]
         pub(crate) struct #prefixes_buckets_name<AF: AddressFamily, M: routecore::record::Meta> {
@@ -318,22 +327,19 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
 
     let struct_impl = quote! {
 
-        impl<AF: AddressFamily> FamilyBuckets<#ip_af> for #buckets_name<AF> {
+        impl<AF: AddressFamily> NodeBuckets<#ip_af> for #buckets_name<AF> {
             fn init() -> Self {
                 #buckets_name {
-                    #( #strides_all_len_level: NodeSet::init(1 << Self::len_to_store_bits(#strides_all_len_accu, 0).unwrap() ), )*
+                    // creates l0, l1, ... l<AF::BITS>, but only for the
+                    // levels at the end of each stride, so for strides
+                    // [5,5,4,3,3,3,3,3,3] is will create l0, l5, l10, l14,
+                    // l17, l20, l23, l26, l29 last level will be omitted,
+                    // because that will never be used (l29 has children
+                    // with prefixes up to prefix-length 32 in this example).
+                    #( #strides_all_len_level: NodeSet::init(1 << #prefix_store_bits(#strides_all_len_accu, 0).unwrap() ), )*
                     _af: PhantomData,
                     stride_sizes: [ #( #stride_sizes, )*],
                     strides_len: #strides_len
-                    // l0: NodeSet::init(1 << 5),
-                    // l5: NodeSet::init(1 << 10),
-                    // l10: NodeSet::init(1 << 12),
-                    // l14: NodeSet::init(1 << 12),
-                    // l17: NodeSet::init(1 << 12),
-                    // l20: NodeSet::init(1 << 12),
-                    // l23: NodeSet::init(1 << 12),
-                    // l26: NodeSet::init(1 << 4),
-                    // l29: NodeSet::init(1 << 4),
                 }
             }
 
@@ -343,12 +349,6 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
             ) -> &mut NodeSet<#ip_af, Stride3> {
                 match id.get_id().1 as usize {
                     #( #strides_len3 => &mut self.#strides_len3_l, )*
-                    // 14 => &mut self.l14,
-                    // 17 => &mut self.l17,
-                    // 20 => &mut self.l20,
-                    // 23 => &mut self.l23,
-                    // 26 => &mut self.l26,
-                    // 29 => &mut self.l29,
                     _ => panic!(
                         "unexpected sub prefix length {} in stride size 3 ({})",
                         id.get_id().1,
@@ -360,12 +360,6 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
             fn get_store3(&self, id: StrideNodeId<#ip_af>) -> &NodeSet<#ip_af, Stride3> {
                 match id.get_id().1 as usize {
                     #( #strides_len3 => &self.#strides_len3_l, )*
-                    // 14 => &self.l14,
-                    // 17 => &self.l17,
-                    // 20 => &self.l20,
-                    // 23 => &self.l23,
-                    // 26 => &self.l26,
-                    // 29 => &self.l29,
                     _ => panic!(
                         "unexpected sub prefix length {} in stride size 3 ({})",
                         id.get_id().1,
@@ -380,7 +374,6 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
             ) -> &mut NodeSet<#ip_af, Stride4> {
                 match id.get_id().1 as usize {
                     #( #strides_len4 => &mut self.#strides_len4_l, )*
-                    // 10 => &mut self.l10,
                     _ => panic!(
                         "unexpected sub prefix length {} in stride size 4 ({})",
                         id.get_id().1,
@@ -468,6 +461,57 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
     TokenStream::from(result)
 }
 
+// #[proc_macro_attribute]
+// pub fn create_prefix_buckets(attr: TokenStream, _input: TokenStream) -> TokenStream {
+//     // The arguments for the macro invocation
+//     let attrs = parse_macro_input!(attr as syn::Expr);
+
+//     // let attrs = attrs.elems.iter().collect::<Vec<_>>();
+
+//     // let input = parse_macro_input!(input as syn::ItemStruct);
+//     let ip_af = match attrs {
+//         syn::Expr::Path(t) => t,
+//         _ => panic!("Expected Family Type"),
+//     };
+//     let prefixes_all_len;
+//     let prefixes_buckets_name: syn::Ident;
+
+//     // let af_ident = if let syn::Expr::Path(p) = &*ip_af.expr {
+//     //     &p.path
+//     // } else {
+//     //     panic!("Expected a Type")
+//     // };
+
+//     // The name of the Struct that we're going to generate
+//     // We'll prepend it with the name of the TreeBitMap struct
+//     // that the user wants, so that our macro is a little bit
+//     // more hygienic, and the user can create multiple types
+//     // of TreeBitMap structs with different stride sizes.
+//     if ip_af.path.is_ident("IPv4") {
+//         prefixes_all_len = (0..32_u8)
+//             .map(|l| format_ident!("p{}", l))
+//             .collect::<Vec<_>>();
+//         prefixes_buckets_name = format_ident!("PrefixBuckets4");
+//     } else {
+//         prefixes_all_len = (0..128_u8)
+//             .map(|l| format_ident!("p{}", l))
+//             .collect::<Vec<_>>();
+//         prefixes_buckets_name = format_ident!("PrefixBuckets6");
+//     };
+
+//     let prefix_buckets = quote! {
+//         #[derive(Debug)]
+//         pub(crate) struct #prefixes_buckets_name<#ip_af, M: routecore::record::Meta> {
+//             #( #prefixes_all_len: PrefixSet<#ip_af, M>, )*
+//             _af: PhantomData<AF>,
+//             _m: PhantomData<M>
+//         }
+
+//     };
+
+//     TokenStream::from(prefix_buckets)
+// }
+
 #[proc_macro_attribute]
 pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as syn::ItemStruct);
@@ -481,17 +525,16 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
     let strides6_name = format_ident!("{}IPv6", store_name);
 
     let create_strides = quote! {
-            use ::std::marker::PhantomData;
-            use ::dashmap::DashMap;
-            use ::routecore::record::{MergeUpdate, NoMeta};
-            use ::routecore::addr::Prefix;
+        use ::std::marker::PhantomData;
+        use ::routecore::record::{MergeUpdate, NoMeta};
+        use ::routecore::addr::Prefix;
 
-            #[stride_sizes((IPv4, #strides4))]
-            struct #strides4_name;
+        #[stride_sizes((IPv4, #strides4))]
+        struct #strides4_name;
 
-            #[stride_sizes((IPv6, #strides6))]
-            struct #strides6_name;
-        };
+        #[stride_sizes((IPv6, #strides6))]
+        struct #strides6_name;
+    };
 
     let store = quote! {
         /// A concurrently read/writable, lock-free Prefix Store, for use in a multi-threaded context.
@@ -550,10 +593,10 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
         {
             pub fn match_prefix(
                 &'a self,
-                prefix_store_locks: (
-                    &'a PrefixHashMap<IPv4, Meta>,
-                    &'a PrefixHashMap<IPv6, Meta>,
-                ),
+                // prefix_store_locks: (
+                //     &'a PrefixHashMap<IPv4, Meta>,
+                //     &'a PrefixHashMap<IPv6, Meta>,
+                // ),
                 search_pfx: &Prefix,
                 options: &MatchOptions,
                 guard: &'a Guard,
@@ -612,15 +655,6 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                     v4: Some(rs4),
                     v6: rs6,
                 }
-            }
-
-            pub fn acquire_prefixes_rwlock_read(
-                &'a self,
-            ) -> (
-                &'a DashMap<PrefixId<IPv4>, InternalPrefixRecord<IPv4, Meta>>,
-                &'a DashMap<PrefixId<IPv6>, InternalPrefixRecord<IPv6, Meta>>,
-            ) {
-                (&self.v4.store.prefixes, &self.v6.store.prefixes)
             }
 
             pub fn prefixes_len(&self) -> usize {
