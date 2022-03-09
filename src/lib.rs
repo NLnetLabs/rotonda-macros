@@ -276,15 +276,42 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
             _af: PhantomData<AF>,
             stride_sizes: [u8; 42],
             strides_len: u8
-            // l0: NodeSet<AF, Stride5>,
-            // l5: NodeSet<AF, Stride5>,
-            // l10: NodeSet<AF, Stride4>,
-            // l14: NodeSet<AF, Stride3>,
-            // l17: NodeSet<AF, Stride3>,
-            // l20: NodeSet<AF, Stride3>,
-            // l23: NodeSet<AF, Stride3>,
-            // l26: NodeSet<AF, Stride3>,
-            // l29: NodeSet<AF, Stride3>,
+
+        #[derive(Debug)]
+        pub(crate) struct #prefixes_buckets_name<AF: AddressFamily, M: routecore::record::Meta> {
+            // creates a bucket for each prefix (PrefixId) length, with
+            // hard-coded field-names, like this:
+            // p0: PrefixSet<AF, M>,
+            // p1: PrefixSet<AF, M>,
+            // ...
+            // p32: PrefixSet<AF, M>,
+            #( #prefixes_all_len: PrefixSet<#ip_af, M>, )*
+            _af: PhantomData<AF>,
+            _m: PhantomData<M>,
+        }
+
+    };
+
+    let prefix_buckets_impl = quote! {
+
+        impl<AF: AddressFamily, M: Meta> PrefixBuckets<#ip_af, M> for #prefixes_buckets_name<AF, M> {
+            fn init() -> #prefixes_buckets_name<AF, M> {
+                #prefixes_buckets_name {
+                    #( #prefixes_all_len: PrefixSet::init(1 << #prefix_store_bits(#all_len, 0).unwrap()), )*
+                    _af: PhantomData,
+                    _m: PhantomData,
+                }
+            }
+
+            fn remove(&mut self, id: PrefixId<#ip_af>) -> Option<InternalPrefixRecord<#ip_af, M>> { unimplemented!() }
+
+            #get_root_prefix_set
+
+            fn get_root_prefix_set_mut(&mut self, len: u8) -> &mut PrefixSet<#ip_af, M> { &mut self.p0 }
+
+            fn get_bits_for_len(len: u8, level: u8) -> Option<&'static u8> {
+                #prefix_store_bits(len, level)
+            }
         }
 
     };
@@ -428,12 +455,13 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
     };
 
     let type_alias = quote! {
-        type #type_name<Meta> = TreeBitMap<CustomAllocStorage<#ip_af, Meta, #buckets_name<#ip_af>>>;
+        type #type_name<Meta> = TreeBitMap<CustomAllocStorage<#ip_af, Meta, #buckets_name<#ip_af>, #prefixes_buckets_name<#ip_af, Meta>>>;
     };
 
     let result = quote! {
         #struct_creation
         #struct_impl
+        #prefix_buckets_impl
         #type_alias
     };
 
