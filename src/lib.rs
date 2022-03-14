@@ -140,7 +140,7 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
                     &self.p0, &self.p1, &self.p2, &self.p3, &self.p4, &self.p5, &self.p6, &self.p7, &self.p8,
                     &self.p9, &self.p10, &self.p11, &self.p12, &self.p13, &self.p14, &self.p15, &self.p16,
                     &self.p17, &self.p18, &self.p19, &self.p20, &self.p21, &self.p22, &self.p23, &self.p24,
-                    &self.p25, &self.p26, &self.p27, &self.p28, &self.p29, &self.p30, &self.p31, &self.p31, &self.p32
+                    &self.p25, &self.p26, &self.p27, &self.p28, &self.p29, &self.p30, &self.p31, &self.p32
                 ][len as usize]
             }
         };
@@ -171,7 +171,7 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
                     &self.p97, &self.p98, &self.p99, &self.p100, &self.p101, &self.p102, &self.p103, &self.p104,
                     &self.p105, &self.p106, &self.p107, &self.p108, &self.p109, &self.p110, &self.p111, &self.p112,
                     &self.p113, &self.p114, &self.p115, &self.p116, &self.p117, &self.p118, &self.p119, &self.p120,
-                    &self.p121, &self.p122, &self.p123, &self.p124, &self.p125, &self.p126, &self.p127, &self.p127, &self.p128
+                    &self.p121, &self.p122, &self.p123, &self.p124, &self.p125, &self.p126, &self.p127, &self.p128
                     ][len as usize]
             }
         };
