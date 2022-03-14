@@ -657,6 +657,26 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 }
             }
 
+            pub fn prefixes_iter_v4(&'a self, guard: &'a Guard) -> impl Iterator<Item=routecore::bgp::PrefixRecord<Meta>> + 'a {
+                let rs4 = self.v4.store.prefixes_iter(guard);
+
+                crate::SingleAFPrefixRecordIterator {
+                    tree: rs4,
+                    _af: PhantomData,
+                    _pb: PhantomData,
+                }
+            }
+
+            pub fn prefixes_iter_v6(&'a self, guard: &'a Guard) -> impl Iterator<Item=routecore::bgp::PrefixRecord<Meta>> + 'a {
+                let rs6 = self.v6.store.prefixes_iter(guard);
+
+                crate::SingleAFPrefixRecordIterator {
+                    tree: rs6,
+                    _af: PhantomData,
+                    _pb: PhantomData,
+                }
+            }
+
             pub fn prefixes_len(&self) -> usize {
                 self.v4.store.get_prefixes_len() + self.v6.store.get_prefixes_len()
             }
