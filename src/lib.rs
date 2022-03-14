@@ -114,7 +114,7 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
     let prefixes_all_len;
     let all_len;
     let prefixes_buckets_name: syn::Ident;
-    let prefix_store_bits;
+    // let prefix_store_bits;
     let get_root_prefix_set;
 
     // The name of the Struct that we're going to generate
@@ -133,7 +133,7 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
             .map(|l| format_ident!("p{}", l))
             .collect::<Vec<_>>();
         prefixes_buckets_name = format_ident!("PrefixBuckets4");
-        prefix_store_bits = format_ident!("prefix_store_bits_4");
+        // prefix_store_bits = format_ident!("prefix_store_bits_4");
         get_root_prefix_set = quote! {
             fn get_root_prefix_set(&self, len: u8) -> &'_ PrefixSet<IPv4, M> {
                 [
@@ -144,7 +144,7 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
                 ][len as usize]
             }
         };
-        crate::maps::len_to_store_v4_map()
+        crate::maps::node_buckets_map_v4()
     } else {
         all_len = (0..=128_u8).collect::<Vec<_>>();
         prefixes_all_len = (0..=128_u8)
@@ -152,7 +152,7 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
             .collect::<Vec<_>>();
 
         prefixes_buckets_name = format_ident!("PrefixBuckets6");
-        prefix_store_bits = format_ident!("prefix_store_bits_6");
+        // prefix_store_bits = format_ident!("prefix_store_bits_6");
         get_root_prefix_set = quote! {
             fn get_root_prefix_set(&self, len: u8) -> &'_ PrefixSet<IPv6, M> {
                 [
@@ -175,7 +175,7 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
                     ][len as usize]
             }
         };
-        crate::maps::len_to_store_v6_map()
+        crate::maps::node_buckets_map_v6()
     };
 
     let mut strides_num: Vec<u8> = vec![];
@@ -301,12 +301,18 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
 
     };
 
+    let prefix_buckets_map = if ip_af.path.is_ident("IPv4") {
+        crate::maps::prefix_buckets_map_v4()
+    } else {
+        crate::maps::prefix_buckets_map_v6()
+    };
+
     let prefix_buckets_impl = quote! {
 
         impl<AF: AddressFamily, M: Meta> PrefixBuckets<#ip_af, M> for #prefixes_buckets_name<AF, M> {
             fn init() -> #prefixes_buckets_name<AF, M> {
                 #prefixes_buckets_name {
-                    #( #prefixes_all_len: PrefixSet::init(1 << #prefix_store_bits(#all_len, 0).unwrap()), )*
+                    #( #prefixes_all_len: PrefixSet::init(1 << #prefixes_buckets_name::<AF, M>::get_bits_for_len(#all_len, 0).unwrap()), )*
                     _af: PhantomData,
                     _m: PhantomData,
                 }
@@ -318,9 +324,12 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
 
             fn get_root_prefix_set_mut(&mut self, len: u8) -> &mut PrefixSet<#ip_af, M> { &mut self.p0 }
 
-            fn get_bits_for_len(len: u8, level: u8) -> Option<&'static u8> {
-                #prefix_store_bits(len, level)
-            }
+            // fn get_bits_for_len(len: u8, level: u8) -> Option<&'static u8> {
+            //     #prefix_store_bits(len, level)
+            // }
+
+            #prefix_buckets_map
+
         }
 
     };
