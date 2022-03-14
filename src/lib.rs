@@ -336,7 +336,7 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
                     // l17, l20, l23, l26, l29 last level will be omitted,
                     // because that will never be used (l29 has children
                     // with prefixes up to prefix-length 32 in this example).
-                    #( #strides_all_len_level: NodeSet::init(1 << #prefix_store_bits(#strides_all_len_accu, 0).unwrap() ), )*
+                    #( #strides_all_len_level: NodeSet::init(1 << #buckets_name::<AF>::len_to_store_bits(#strides_all_len_accu, 0).unwrap() ), )*
                     _af: PhantomData,
                     stride_sizes: [ #( #stride_sizes, )*],
                     strides_len: #strides_len
