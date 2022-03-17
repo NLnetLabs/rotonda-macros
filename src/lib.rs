@@ -255,20 +255,6 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
     let (left, _right) = stride_sizes.split_at_mut(strides_len as usize);
     left.swap_with_slice(&mut strides_num);
 
-    // let mut strides = vec![];
-    // let mut len_to_stride_size: [StrideType; 128] =
-    //     [StrideType::Stride3; 128];
-    // let mut strides_sum = 0;
-    // for s in strides_vec.iter().cycle() {
-    //     strides.push(*s);
-    //     len_to_stride_size[strides_sum as usize] = StrideType::from(*s);
-    //     strides_sum += s;
-    //     if strides_sum >= Store::AF::BITS - 1 {
-    //         break;
-    //     }
-    // }
-    // assert_eq!(strides.iter().sum::<u8>(), Store::AF::BITS);
-
     let struct_creation = quote! {
 
         #[derive(Debug)]
@@ -422,57 +408,6 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
     TokenStream::from(result)
 }
 
-// #[proc_macro_attribute]
-// pub fn create_prefix_buckets(attr: TokenStream, _input: TokenStream) -> TokenStream {
-//     // The arguments for the macro invocation
-//     let attrs = parse_macro_input!(attr as syn::Expr);
-
-//     // let attrs = attrs.elems.iter().collect::<Vec<_>>();
-
-//     // let input = parse_macro_input!(input as syn::ItemStruct);
-//     let ip_af = match attrs {
-//         syn::Expr::Path(t) => t,
-//         _ => panic!("Expected Family Type"),
-//     };
-//     let prefixes_all_len;
-//     let prefixes_buckets_name: syn::Ident;
-
-//     // let af_ident = if let syn::Expr::Path(p) = &*ip_af.expr {
-//     //     &p.path
-//     // } else {
-//     //     panic!("Expected a Type")
-//     // };
-
-//     // The name of the Struct that we're going to generate
-//     // We'll prepend it with the name of the TreeBitMap struct
-//     // that the user wants, so that our macro is a little bit
-//     // more hygienic, and the user can create multiple types
-//     // of TreeBitMap structs with different stride sizes.
-//     if ip_af.path.is_ident("IPv4") {
-//         prefixes_all_len = (0..32_u8)
-//             .map(|l| format_ident!("p{}", l))
-//             .collect::<Vec<_>>();
-//         prefixes_buckets_name = format_ident!("PrefixBuckets4");
-//     } else {
-//         prefixes_all_len = (0..128_u8)
-//             .map(|l| format_ident!("p{}", l))
-//             .collect::<Vec<_>>();
-//         prefixes_buckets_name = format_ident!("PrefixBuckets6");
-//     };
-
-//     let prefix_buckets = quote! {
-//         #[derive(Debug)]
-//         pub(crate) struct #prefixes_buckets_name<#ip_af, M: routecore::record::Meta> {
-//             #( #prefixes_all_len: PrefixSet<#ip_af, M>, )*
-//             _af: PhantomData<AF>,
-//             _m: PhantomData<M>
-//         }
-
-//     };
-
-//     TokenStream::from(prefix_buckets)
-// }
-
 #[proc_macro_attribute]
 pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as syn::ItemStruct);
@@ -554,10 +489,6 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
         {
             pub fn match_prefix(
                 &'a self,
-                // prefix_store_locks: (
-                //     &'a PrefixHashMap<IPv4, Meta>,
-                //     &'a PrefixHashMap<IPv6, Meta>,
-                // ),
                 search_pfx: &Prefix,
                 options: &MatchOptions,
                 guard: &'a Guard,
