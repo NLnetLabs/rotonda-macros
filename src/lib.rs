@@ -322,12 +322,6 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
 
             #get_root_prefix_set
 
-            fn get_root_prefix_set_mut(&mut self, len: u8) -> &mut PrefixSet<#ip_af, M> { &mut self.p0 }
-
-            // fn get_bits_for_len(len: u8, level: u8) -> Option<&'static u8> {
-            //     #prefix_store_bits(len, level)
-            // }
-
             #prefix_buckets_map
 
         }
@@ -352,20 +346,6 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
                 }
             }
 
-            fn get_store3_mut(
-                &mut self,
-                id: StrideNodeId<#ip_af>,
-            ) -> &mut NodeSet<#ip_af, Stride3> {
-                match id.get_id().1 as usize {
-                    #( #strides_len3 => &mut self.#strides_len3_l, )*
-                    _ => panic!(
-                        "unexpected sub prefix length {} in stride size 3 ({})",
-                        id.get_id().1,
-                        id
-                    ),
-                }
-            }
-
             fn get_store3(&self, id: StrideNodeId<#ip_af>) -> &NodeSet<#ip_af, Stride3> {
                 match id.get_id().1 as usize {
                     #( #strides_len3 => &self.#strides_len3_l, )*
@@ -377,23 +357,10 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
                 }
             }
 
-            fn get_store4_mut(
-                &mut self,
-                id: StrideNodeId<#ip_af>,
-            ) -> &mut NodeSet<#ip_af, Stride4> {
-                match id.get_id().1 as usize {
-                    #( #strides_len4 => &mut self.#strides_len4_l, )*
-                    _ => panic!(
-                        "unexpected sub prefix length {} in stride size 4 ({})",
-                        id.get_id().1,
-                        id
-                    ),
-                }
-            }
-
             fn get_store4(&self, id: StrideNodeId<#ip_af>) -> &NodeSet<#ip_af, Stride4> {
                 match id.get_id().1 as usize {
                     #( #strides_len4 => &self.#strides_len4_l, )*
+                    // ex.:
                     // 10 => &self.l10,
                     _ => panic!(
                         "unexpected sub prefix length {} in stride size 4 ({})",
@@ -403,25 +370,10 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
                 }
             }
 
-            fn get_store5_mut(
-                &mut self,
-                id: StrideNodeId<#ip_af>,
-            ) -> &mut NodeSet<#ip_af, Stride5> {
-                match id.get_id().1 as usize {
-                    #( #strides_len5 => &mut self.#strides_len5_l, )*
-                    // 0 => &mut self.l0,
-                    // 5 => &mut self.l5,
-                    _ => panic!(
-                        "unexpected sub prefix length {} in stride size 5 ({})",
-                        id.get_id().1,
-                        id
-                    ),
-                }
-            }
-
             fn get_store5(&self, id: StrideNodeId<#ip_af>) -> &NodeSet<#ip_af, Stride5> {
                 match id.get_id().1 as usize {
                     #( #strides_len5 => &self.#strides_len5_l, )*
+                    // ex.:
                     // 0 => &self.l0,
                     // 5 => &self.l5,
                     _ => panic!(
@@ -634,7 +586,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             }
 
             pub fn insert(
-                &mut self,
+                &self,
                 prefix: &Prefix,
                 meta: Meta,
             ) -> Result<(), std::boxed::Box<dyn std::error::Error>> {
