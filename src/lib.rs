@@ -539,6 +539,29 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 }
             }
 
+            pub fn less_specifics_iter_from(&'a self,
+            search_pfx: &Prefix,
+            guard: &'a Guard,
+        ) -> QueryResult<'a, Meta> {
+
+            match search_pfx.addr() {
+                std::net::IpAddr::V4(addr) => self.v4.less_specifics_iter_from(
+                    PrefixId::<IPv4>::new(
+                        addr.into(),
+                        search_pfx.len(),
+                    ),
+                    guard
+                ),
+                std::net::IpAddr::V6(addr) => self.v6.less_specifics_iter_from(
+                    PrefixId::<IPv6>::new(
+                        addr.into(),
+                        search_pfx.len(),
+                    ),
+                    guard
+                ),
+            }
+        }
+
             pub fn insert(
                 &self,
                 prefix: &Prefix,
