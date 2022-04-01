@@ -562,6 +562,34 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             }
         }
 
+
+            pub fn less_specifics_iter_from(&'a self,
+                search_pfx: &Prefix,
+                guard: &'a Guard,
+            ) -> impl Iterator<Item=routecore::bgp::PrefixRecord<Meta>> + 'a {
+                let (left, right) = match search_pfx.addr() {
+                    std::net::IpAddr::V4(addr) => {
+                        (Some(self.v4.store.less_specific_prefix_iter(
+                            PrefixId::<IPv4>::new(
+                                addr.into(),
+                                search_pfx.len(),
+                            ),
+                            guard
+                        ).map(|p| routecore::bgp::PrefixRecord::from(p))), None)
+                    }
+                    std::net::IpAddr::V6(addr) => {
+                        (None, Some(self.v6.store.less_specific_prefix_iter(
+                            PrefixId::<IPv6>::new(
+                                addr.into(),
+                                search_pfx.len(),
+                            ),
+                            guard
+                        ).map(|p| routecore::bgp::PrefixRecord::from(p))))
+                    }
+                };
+                left.into_iter().flatten().chain(right.into_iter().flatten())
+            }
+
             pub fn insert(
                 &self,
                 prefix: &Prefix,
