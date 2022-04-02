@@ -395,7 +395,7 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
     };
 
     let type_alias = quote! {
-        type #type_name<Meta> = TreeBitMap<CustomAllocStorage<#ip_af, Meta, #buckets_name<#ip_af>, #prefixes_buckets_name<#ip_af, Meta>>>;
+        type #type_name<Meta> = TreeBitMap<#ip_af, Meta, #buckets_name<#ip_af>, #prefixes_buckets_name<#ip_af, Meta>>;
     };
 
     let result = quote! {
