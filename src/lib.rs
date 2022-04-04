@@ -640,34 +640,32 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 }
             }
 
-            pub fn prefixes_iter(&'a self, guard: &'a Guard) -> impl Iterator<Item=routecore::bgp::PrefixRecord<Meta>> + 'a {
-                let rs4 = self.v4.store.prefixes_iter(guard);
-                let rs6 = self.v6.store.prefixes_iter(guard);
-
-                crate::CustomAllocPrefixRecordIterator {
-                    v4: Some(rs4),
-                    v6: rs6,
-                }
+            pub fn prefixes_iter(
+                &'a self, 
+                guard: &'a Guard
+            ) -> impl Iterator<Item=routecore::bgp::PrefixRecord<Meta>> + 'a {
+                self.v4.store.prefixes_iter(guard)
+                    .map(|p| routecore::bgp::PrefixRecord::from(p))
+                    .chain(
+                        self.v6.store.prefixes_iter(guard)
+                        .map(|p| routecore::bgp::PrefixRecord::from(p))
+                    )
             }
 
-            pub fn prefixes_iter_v4(&'a self, guard: &'a Guard) -> impl Iterator<Item=routecore::bgp::PrefixRecord<Meta>> + 'a {
-                let rs4 = self.v4.store.prefixes_iter(guard);
-
-                crate::SingleAFPrefixRecordIterator {
-                    tree: rs4,
-                    _af: PhantomData,
-                    _pb: PhantomData,
-                }
+            pub fn prefixes_iter_v4(
+                &'a self,
+                guard: &'a Guard
+            ) -> impl Iterator<Item=routecore::bgp::PrefixRecord<Meta>> + 'a {
+                self.v4.store.prefixes_iter(guard)
+                    .map(|p| routecore::bgp::PrefixRecord::from(p))
             }
 
-            pub fn prefixes_iter_v6(&'a self, guard: &'a Guard) -> impl Iterator<Item=routecore::bgp::PrefixRecord<Meta>> + 'a {
-                let rs6 = self.v6.store.prefixes_iter(guard);
-
-                crate::SingleAFPrefixRecordIterator {
-                    tree: rs6,
-                    _af: PhantomData,
-                    _pb: PhantomData,
-                }
+            pub fn prefixes_iter_v6(
+                &'a self, 
+                guard: &'a Guard
+            ) -> impl Iterator<Item=routecore::bgp::PrefixRecord<Meta>> + 'a {
+                self.v6.store.prefixes_iter(guard)
+                    .map(|p| routecore::bgp::PrefixRecord::from(p))
             }
 
             pub fn prefixes_len(&self) -> usize {
