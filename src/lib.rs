@@ -408,6 +408,11 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
     TokenStream::from(result)
 }
 
+// ---------- Create Store struct -------------------------------------------
+
+// This macro creates the struct that will be the public API for the
+// PrefixStore. Therefore all methods defined in here should be public.
+
 #[proc_macro_attribute]
 pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as syn::ItemStruct);
@@ -433,7 +438,8 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
     };
 
     let store = quote! {
-        /// A concurrently read/writable, lock-free Prefix Store, for use in a multi-threaded context.
+        /// A concurrently read/writable, lock-free Prefix Store, for use in a 
+        /// multi-threaded context.
         pub struct #store_name<
             Meta: routecore::record::Meta + MergeUpdate,
         > {
@@ -482,9 +488,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             }
         }
 
-        impl<
-                'a,
-                Meta: routecore::record::Meta + MergeUpdate,
+        impl<'a, Meta: routecore::record::Meta + MergeUpdate,
             > #store_name<Meta>
         {
             pub fn match_prefix(
@@ -496,8 +500,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
 
                 match search_pfx.addr() {
                     std::net::IpAddr::V4(addr) => self.v4.match_prefix(
-                        // prefix_store_locks.0,
-                        &InternalPrefixRecord::<IPv4, NoMeta>::new(
+                        PrefixId::<IPv4>::new(
                             addr.into(),
                             search_pfx.len(),
                         ),
@@ -505,8 +508,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                         guard
                     ),
                     std::net::IpAddr::V6(addr) => self.v6.match_prefix(
-                        // prefix_store_locks.1,
-                        &InternalPrefixRecord::<IPv6, NoMeta>::new(
+                        PrefixId::<IPv6>::new(
                             addr.into(),
                             search_pfx.len(),
                         ),
@@ -540,27 +542,27 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             }
 
             pub fn less_specifics_from(&'a self,
-            search_pfx: &Prefix,
-            guard: &'a Guard,
-        ) -> QueryResult<'a, Meta> {
+                search_pfx: &Prefix,
+                guard: &'a Guard,
+            ) -> QueryResult<'a, Meta> {
 
-            match search_pfx.addr() {
-                std::net::IpAddr::V4(addr) => self.v4.less_specifics_from(
-                    PrefixId::<IPv4>::new(
-                        addr.into(),
-                        search_pfx.len(),
+                match search_pfx.addr() {
+                    std::net::IpAddr::V4(addr) => self.v4.less_specifics_from(
+                        PrefixId::<IPv4>::new(
+                            addr.into(),
+                            search_pfx.len(),
+                        ),
+                        guard
                     ),
-                    guard
-                ),
-                std::net::IpAddr::V6(addr) => self.v6.less_specifics_from(
-                    PrefixId::<IPv6>::new(
-                        addr.into(),
-                        search_pfx.len(),
+                    std::net::IpAddr::V6(addr) => self.v6.less_specifics_from(
+                        PrefixId::<IPv6>::new(
+                            addr.into(),
+                            search_pfx.len(),
+                        ),
+                        guard
                     ),
-                    guard
-                ),
+                }
             }
-        }
 
 
             pub fn less_specifics_iter_from(&'a self,
@@ -669,7 +671,8 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             }
 
             pub fn prefixes_len(&self) -> usize {
-                self.v4.store.get_prefixes_len() + self.v6.store.get_prefixes_len()
+                self.v4.store.get_prefixes_len() 
+                + self.v6.store.get_prefixes_len()
             }
 
             pub fn prefixes_v4_len(&self) -> usize {
@@ -681,7 +684,8 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             }
 
             pub fn nodes_len(&self) -> usize {
-                self.v4.store.get_nodes_len() + self.v6.store.get_nodes_len()
+                self.v4.store.get_nodes_len()
+                + self.v6.store.get_nodes_len()
             }
 
             pub fn nodes_v4_len(&self) -> usize {
