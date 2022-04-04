@@ -7,96 +7,6 @@ use quote::{format_ident, quote};
 use std::iter::Iterator;
 use syn::parse_macro_input;
 
-#[proc_macro_attribute]
-pub fn test_macro(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(item as syn::ItemStruct);
-    let name = &input.ident;
-
-    let attr = parse_macro_input!(attr as syn::ExprTuple);
-
-    let attrs = attr.elems.iter().collect::<Vec<_>>();
-
-    let ip_af = match attrs[0] {
-        syn::Expr::Type(t) => t,
-        _ => panic!("Expected Family Type"),
-    };
-
-    let strides = match attrs[1] {
-        syn::Expr::Array(a) => {
-            // 1. Try to parse the second expression of the TokenStream as an
-            //    array of u8. Panic if that fails.
-            let strides_vec = a
-                .elems
-                .iter()
-                .map(|e| match e {
-                    syn::Expr::Lit(s) => {
-                        if let syn::Lit::Int(i) = &s.lit {
-                            i.base10_parse::<u8>().unwrap()
-                        } else {
-                            panic!("Expected an integer")
-                        }
-                    }
-                    _ => {
-                        panic!("Expected a literal")
-                    }
-                })
-                .collect::<Vec<u8>>();
-
-            // 2. Check if the strides division makes sense
-            let af_bits: u8 = if let syn::Expr::Path(p) = &*ip_af.expr {
-                match p.path.get_ident() {
-                    Some(i) => match i.to_string().as_str() {
-                        "IPv4" => 32_u8,
-                        "IPv6" => 128_u8,
-                        _ => panic!("Expected Ipv4 or Ipv6"),
-                    },
-                    None => panic!("Expected an identifier"),
-                }
-            } else {
-                panic!("Expected a path")
-            };
-
-            let mut strides = vec![];
-            let mut strides_sum = 0;
-            for s in strides_vec.iter().cycle() {
-                strides.push(*s);
-                strides_sum += s;
-                if strides_sum >= af_bits - 1 {
-                    break;
-                }
-            }
-            assert_eq!(strides_vec.iter().sum::<u8>(), af_bits);
-
-            quote! { [#( #strides ),*] }
-        }
-        syn::Expr::Path(s) => {
-            let array = s.path.segments[0].ident.clone();
-            quote! { #array.to_vec() }
-        }
-        _ => panic!("Expected a const or static"),
-    };
-
-    let result = quote! {
-
-        pub(crate) struct #name {
-            strides: [u8; 4],
-        }
-
-        impl #name {
-            fn a() -> impl IntoIterator<Item = u8> {
-                #strides
-            }
-        }
-
-    };
-
-    TokenStream::from(result)
-}
-
-#[proc_macro]
-pub fn test_macro2(input: TokenStream) -> TokenStream {
-    input
-}
 
 #[proc_macro_attribute]
 pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
@@ -304,7 +214,7 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
                 }
             }
 
-            fn remove(&mut self, id: PrefixId<#ip_af>) -> Option<InternalPrefixRecord<#ip_af, M>> { unimplemented!() }
+            fn remove(&mut self, id: PrefixId<#ip_af>) -> Option<M> { unimplemented!() }
 
             #get_root_prefix_set
 
@@ -438,7 +348,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
     };
 
     let store = quote! {
-        /// A concurrently read/writable, lock-free Prefix Store, for use in a 
+        /// A concurrently read/writable, lock-free Prefix Store, for use in a
         /// multi-threaded context.
         pub struct #store_name<
             Meta: routecore::record::Meta + MergeUpdate,
@@ -626,24 +536,22 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             ) -> Result<(), std::boxed::Box<dyn std::error::Error>> {
                 match prefix.addr() {
                     std::net::IpAddr::V4(addr) => {
-                        self.v4.insert(InternalPrefixRecord::new_with_meta(
-                            addr.into(),
-                            prefix.len(),
+                        self.v4.insert(PrefixRecord::new_with_local_meta(
+                            *prefix,
                             meta,
-                        ))
+                        ).into())
                     }
                     std::net::IpAddr::V6(addr) => {
-                        self.v6.insert(InternalPrefixRecord::new_with_meta(
-                            addr.into(),
-                            prefix.len(),
+                        self.v6.insert(PrefixRecord::new_with_local_meta(
+                            *prefix,
                             meta,
-                        ))
+                        ).into())
                     }
                 }
             }
 
             pub fn prefixes_iter(
-                &'a self, 
+                &'a self,
                 guard: &'a Guard
             ) -> impl Iterator<Item=routecore::bgp::PrefixRecord<Meta>> + 'a {
                 self.v4.store.prefixes_iter(guard)
@@ -663,7 +571,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             }
 
             pub fn prefixes_iter_v6(
-                &'a self, 
+                &'a self,
                 guard: &'a Guard
             ) -> impl Iterator<Item=routecore::bgp::PrefixRecord<Meta>> + 'a {
                 self.v6.store.prefixes_iter(guard)
@@ -671,7 +579,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             }
 
             pub fn prefixes_len(&self) -> usize {
-                self.v4.store.get_prefixes_len() 
+                self.v4.store.get_prefixes_len()
                 + self.v6.store.get_prefixes_len()
             }
 
