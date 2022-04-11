@@ -3,7 +3,7 @@ use quote::quote;
 pub fn node_buckets_map_v4() -> quote::__private::TokenStream {
     quote! {
 
-            fn len_to_store_bits(len: u8, level: u8) -> Option<&'static u8> {
+            fn len_to_store_bits(len: u8, level: u8) -> u8 {
                 // (vert x hor) = len x level -> number of bits
                 [
                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],       // len 0
@@ -39,8 +39,7 @@ pub fn node_buckets_map_v4() -> quote::__private::TokenStream {
                     [4, 8, 12, 16, 20, 24, 28, 30, 0, 0], // 30
                     [4, 8, 12, 16, 20, 24, 28, 31, 0, 0],  // 31
                     [4, 8 , 12, 16, 20, 24, 28, 32, 0, 0], // 32
-                ][len as usize]
-                    .get(level as usize)
+                ][len as usize][level as usize]
             }
 
     }
@@ -49,7 +48,7 @@ pub fn node_buckets_map_v4() -> quote::__private::TokenStream {
 pub fn prefix_buckets_map_v4() -> quote::__private::TokenStream {
     quote! {
 
-        fn get_bits_for_len(len: u8, level: u8) -> Option<&'static u8> {
+        fn get_bits_for_len(len: u8, level: u8) -> u8 {
             // (vert x hor) = len x level -> number of bits
             [
                 [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],       // len 0
@@ -85,8 +84,7 @@ pub fn prefix_buckets_map_v4() -> quote::__private::TokenStream {
                 [4, 8, 12, 16, 20, 24, 28, 30, 0, 0], // 30
                 [4, 8, 12, 16, 20, 24, 28, 31, 0, 0], // 31
                 [4, 8, 12, 16, 20, 24, 28, 32, 0, 0], // 32
-            ][len as usize]
-                .get(level as usize)
+            ][len as usize][level as usize]
         }
 
     }
@@ -95,7 +93,7 @@ pub fn prefix_buckets_map_v4() -> quote::__private::TokenStream {
 pub fn node_buckets_map_v6() -> quote::__private::TokenStream {
     quote! {
 
-        fn len_to_store_bits(len: u8, level: u8) -> Option<&'static u8> {
+        fn len_to_store_bits(len: u8, level: u8) -> u8 {
             // (vert x hor) = len x level -> number of bits
             [
                 [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],       // len 0
@@ -227,8 +225,7 @@ pub fn node_buckets_map_v6() -> quote::__private::TokenStream {
                 [4, 8, 12, 24, 28, 48, 52, 56, 60, 64, 68, 74, 78, 82, 84, 88, 92, 96, 100, 104, 108, 112, 116, 120, 124, 126],   // 126
                 [4, 8, 12, 24, 28, 48, 52, 56, 60, 64, 68, 74, 78, 82, 84, 88, 92, 96, 100, 104, 108, 112, 116, 120, 124, 127],   // 127
                 [4, 8, 12, 24, 28, 48, 52, 56, 60, 64, 68, 74, 78, 82, 84, 88, 92, 96, 100, 104, 108, 112, 116, 120, 124, 128],   // 128
-            ][len as usize]
-                .get(level as usize)
+            ][len as usize][level as usize]
         }
 
     }
@@ -237,7 +234,7 @@ pub fn node_buckets_map_v6() -> quote::__private::TokenStream {
 pub fn prefix_buckets_map_v6() -> quote::__private::TokenStream {
     quote! {
 
-        fn get_bits_for_len(len: u8, level: u8) -> Option<&'static u8> {
+        fn get_bits_for_len(len: u8, level: u8) -> u8 {
             // (vert x hor) = len x level -> number of bits
             [
                 [
@@ -756,8 +753,7 @@ pub fn prefix_buckets_map_v6() -> quote::__private::TokenStream {
                     4, 8, 12, 24, 28, 48, 52, 56, 60, 64, 68, 74, 78, 82, 84, 88, 92,
                     96, 100, 104, 108, 112, 116, 120, 124, 128,
                 ], // 128
-            ][len as usize]
-                .get(level as usize)
+            ][len as usize][level as usize]
         }
     
     }

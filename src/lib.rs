@@ -208,7 +208,7 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
         impl<AF: AddressFamily, M: Meta> PrefixBuckets<#ip_af, M> for #prefixes_buckets_name<AF, M> {
             fn init() -> #prefixes_buckets_name<AF, M> {
                 #prefixes_buckets_name {
-                    #( #prefixes_all_len: PrefixSet::init(1 << #prefixes_buckets_name::<AF, M>::get_bits_for_len(#all_len, 0).unwrap()), )*
+                    #( #prefixes_all_len: PrefixSet::init(1 << #prefixes_buckets_name::<AF, M>::get_bits_for_len(#all_len, 0)), )*
                     _af: PhantomData,
                     _m: PhantomData,
                 }
@@ -235,7 +235,7 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
                     // l17, l20, l23, l26, l29 last level will be omitted,
                     // because that will never be used (l29 has children
                     // with prefixes up to prefix-length 32 in this example).
-                    #( #strides_all_len_level: NodeSet::init(1 << #buckets_name::<AF>::len_to_store_bits(#strides_all_len_accu, 0).unwrap() ), )*
+                    #( #strides_all_len_level: NodeSet::init(1 << #buckets_name::<AF>::len_to_store_bits(#strides_all_len_accu, 0) ), )*
                     _af: PhantomData,
                     stride_sizes: [ #( #stride_sizes, )*],
                     strides_len: #strides_len
