@@ -409,7 +409,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             ) -> QueryResult<'a, Meta> {
 
                 match search_pfx.addr() {
-                    std::net::IpAddr::V4(addr) => self.v4.match_prefix(
+                    std::net::IpAddr::V4(addr) => self.v4.match_prefix_by_store_direct(
                         PrefixId::<IPv4>::new(
                             addr.into(),
                             search_pfx.len(),
@@ -417,7 +417,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                         options,
                         guard
                     ),
-                    std::net::IpAddr::V6(addr) => self.v6.match_prefix(
+                    std::net::IpAddr::V6(addr) => self.v6.match_prefix_by_store_direct(
                         PrefixId::<IPv6>::new(
                             addr.into(),
                             search_pfx.len(),
