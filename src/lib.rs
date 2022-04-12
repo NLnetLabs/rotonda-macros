@@ -7,7 +7,6 @@ use quote::{format_ident, quote};
 use std::iter::Iterator;
 use syn::parse_macro_input;
 
-
 #[proc_macro_attribute]
 pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
     // The arguments for the macro invocation
@@ -323,6 +322,43 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
 // This macro creates the struct that will be the public API for the
 // PrefixStore. Therefore all methods defined in here should be public.
 
+/// Creates a new, user-named struct with user-defined specified stride sizes
+/// that can used as a store type.
+/// 
+/// # Usage
+/// ```
+/// use rotonda_store::prelude::*;
+/// 
+/// const IP4_STRIDE_ARRAY = [...];
+/// const IP6_STRIDE_ARRAY = [...];
+/// 
+/// #[create_store((IPV4_STRIDE_ARRAY, IPV6_STRIDE_ARRAY))]
+/// struct NuStorage;
+/// ```
+/// 
+/// This will create a `NuStorage` struct, that can be used as a regular
+/// store.
+/// 
+/// The stride-sizes can be any of \[3,4,5\], and they should add up
+/// to the total number of bits in the address family (32 for IPv4 and
+/// 128 for IPv6). Stride sizes in the array will be repeated if the sum
+/// of them falls short of the total number of bits for the address
+/// family.
+/// 
+/// # Example
+/// ```
+/// use rotonda_store::prelude::*;
+///
+/// // The default stride sizes for IPv4, IPv6, resp.
+/// #[create_store((
+///     [5, 5, 4, 3, 3, 3, 3, 3, 3, 3], 
+///     [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 
+///     4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4]
+/// ))]
+/// struct NuStore;
+/// 
+/// let store = Arc::new(NuStore::<NoMeta>::new()); 
+/// ```
 #[proc_macro_attribute]
 pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as syn::ItemStruct);
@@ -348,140 +384,196 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
     };
 
     let store = quote! {
-        /// A concurrently read/writable, lock-free Prefix Store, for use in a
-        /// multi-threaded context.
-        pub struct #store_name<
-            Meta: routecore::record::Meta + MergeUpdate,
-        > {
-            v4: #strides4_name<Meta>,
-            v6: #strides6_name<Meta>,
-        }
-
-        impl<
+            /// A concurrently read/writable, lock-free Prefix Store, for use in a
+            /// multi-threaded context.
+            pub struct #store_name<
                 Meta: routecore::record::Meta + MergeUpdate,
-            > Default for #store_name<Meta>
-        {
-            fn default() -> Self {
-                Self::new()
+            > {
+                v4: #strides4_name<Meta>,
+                v6: #strides6_name<Meta>,
             }
-        }
 
-        impl<
-                Meta: routecore::record::Meta + MergeUpdate,
-            > #store_name<Meta>
-        {
-            /// Creates a new empty store with a tree for IPv4 and on for IPv6.
-            ///
-            /// You'll have to provide the stride sizes per address family and the
-            /// meta-data type. Some meta-data type are included with this crate.
-            ///
-            /// The stride-sizes can be any of [3,4,5], and they should add up
-            /// to the total number of bits in the address family (32 for IPv4 and
-            /// 128 for IPv6). Stride sizes in the array will be repeated if the sum
-            /// of them falls short of the total number of bits for the address
-            /// family.
-            ///
-            /// # Example
-            /// ```
-            /// use rotonda_store::MultiThreadedStore;
-            /// use rotonda_store::PrefixAs;
-            ///
-            /// let store = MultiThreadedStore::<PrefixAs>::new(
-            ///     vec![3, 3, 3, 3, 3, 3, 3, 3, 4, 4], vec![5,4,3,4]
-            /// );
-            /// ```
-            pub fn new() -> Self {
-                Self {
-                    v4: #strides4_name::new(),
-                    v6: #strides6_name::new(),
-                }
-            }
-        }
-
-        impl<'a, Meta: routecore::record::Meta + MergeUpdate,
-            > #store_name<Meta>
-        {
-            pub fn match_prefix(
-                &'a self,
-                search_pfx: &Prefix,
-                options: &MatchOptions,
-                guard: &'a Guard,
-            ) -> QueryResult<'a, Meta> {
-
-                match search_pfx.addr() {
-                    std::net::IpAddr::V4(addr) => self.v4.match_prefix_by_store_direct(
-                        PrefixId::<IPv4>::new(
-                            addr.into(),
-                            search_pfx.len(),
-                        ),
-                        options,
-                        guard
-                    ),
-                    std::net::IpAddr::V6(addr) => self.v6.match_prefix_by_store_direct(
-                        PrefixId::<IPv6>::new(
-                            addr.into(),
-                            search_pfx.len(),
-                        ),
-                        options,
-                        guard
-                    ),
+            impl<
+                    Meta: routecore::record::Meta + MergeUpdate,
+                > Default for #store_name<Meta>
+            {
+                fn default() -> Self {
+                    Self::new()
                 }
             }
 
-            pub fn more_specifics_from(&'a self,
-                search_pfx: &Prefix,
-                guard: &'a Guard,
-            ) -> QueryResult<'a, Meta> {
-
-                match search_pfx.addr() {
-                    std::net::IpAddr::V4(addr) => self.v4.more_specifics_from(
-                        PrefixId::<IPv4>::new(
-                            addr.into(),
-                            search_pfx.len(),
-                        ),
-                        guard
-                    ),
-                    std::net::IpAddr::V6(addr) => self.v6.more_specifics_from(
-                        PrefixId::<IPv6>::new(
-                            addr.into(),
-                            search_pfx.len(),
-                        ),
-                        guard
-                    ),
+            impl<
+                    Meta: routecore::record::Meta + MergeUpdate,
+                > #store_name<Meta>
+            {
+                /// Creates a new empty store with a tree for IPv4 and on for IPv6.
+                ///
+                /// The store will be created with the default stride sizes. After
+                /// creation you can wrap the store in an Arc<_> and `clone()` that
+                /// for every thread that needs read access and/or write acces to
+                /// it. As a convenience both read and write methods take a `&self`
+                /// instead of `&mut self`.
+                /// 
+                /// If you need custom stride sizes you can use the 
+                /// [`#[create_store]`](rotonda_macros::create_store) macro to 
+                /// create a struct with custom stride sizes.
+                ///
+                /// # Example
+                /// ```
+                /// use std::{sync::Arc, thread};
+                /// use std::net::IPv4Addr;
+                /// 
+                /// use rotonda_store::prelude::*;
+                /// use rotonda_store::MultiThreadedStore;
+                /// use routecore::record::NoMeta;
+                /// 
+                /// let tree_bitmap = Arc::new(MultiThreadedStore::<NoMeta>::new());
+                ///
+                /// let _: Vec<_> = (0..16)
+                ///      .map(|_| {
+                ///         let tree_bitmap = tree_bitmap.clone();
+                ///
+                ///         thread::spawn(move || {
+                ///              let pfxs = [
+                ///                 Prefix::new_relaxed(
+                ///                     Ipv4Addr:new(130, 55, 241, 0).into(),
+                ///                     24,
+                ///                 ),
+                ///                 Prefix::new_relaxed(
+                ///                     Ipv4Addr::new(130, 55, 240, 0).into(),
+                ///                     24,
+                ///                 )
+                ///              ]; 
+                ///
+                ///              for pfx in pfxs.into_iter() {
+                ///                  println!("insert {}", pfx.unwrap());
+                ///                  tree_bitmap.insert(
+                ///                      &pfx.unwrap(), 
+                ///                      NoMeta::Empty
+                ///                  ).unwrap();
+                ///              }
+                ///          })
+                ///      }).map(|t| t.join()).collect();
+                /// ```
+                pub fn new() -> Self {
+                    Self {
+                        v4: #strides4_name::new(),
+                        v6: #strides6_name::new(),
+                    }
                 }
             }
 
-            pub fn less_specifics_from(&'a self,
-                search_pfx: &Prefix,
-                guard: &'a Guard,
-            ) -> QueryResult<'a, Meta> {
+            impl<'a, Meta: routecore::record::Meta + MergeUpdate,
+                > #store_name<Meta>
+            {
+                pub fn match_prefix(
+                    &'a self,
+                    search_pfx: &Prefix,
+                    options: &MatchOptions,
+                    guard: &'a Guard,
+                ) -> QueryResult<'a, Meta> {
 
-                match search_pfx.addr() {
-                    std::net::IpAddr::V4(addr) => self.v4.less_specifics_from(
-                        PrefixId::<IPv4>::new(
-                            addr.into(),
-                            search_pfx.len(),
+                    match search_pfx.addr() {
+                        std::net::IpAddr::V4(addr) => self.v4.match_prefix_by_store_direct(
+                            PrefixId::<IPv4>::new(
+                                addr.into(),
+                                search_pfx.len(),
+                            ),
+                            options,
+                            guard
                         ),
-                        guard
-                    ),
-                    std::net::IpAddr::V6(addr) => self.v6.less_specifics_from(
-                        PrefixId::<IPv6>::new(
-                            addr.into(),
-                            search_pfx.len(),
+                        std::net::IpAddr::V6(addr) => self.v6.match_prefix_by_store_direct(
+                            PrefixId::<IPv6>::new(
+                                addr.into(),
+                                search_pfx.len(),
+                            ),
+                            options,
+                            guard
                         ),
-                        guard
-                    ),
+                    }
                 }
-            }
+
+                pub fn more_specifics_from(&'a self,
+                    search_pfx: &Prefix,
+                    guard: &'a Guard,
+                ) -> QueryResult<'a, Meta> {
+
+                    match search_pfx.addr() {
+                        std::net::IpAddr::V4(addr) => self.v4.more_specifics_from(
+                            PrefixId::<IPv4>::new(
+                                addr.into(),
+                                search_pfx.len(),
+                            ),
+                            guard
+                        ),
+                        std::net::IpAddr::V6(addr) => self.v6.more_specifics_from(
+                            PrefixId::<IPv6>::new(
+                                addr.into(),
+                                search_pfx.len(),
+                            ),
+                            guard
+                        ),
+                    }
+                }
+
+                pub fn less_specifics_from(&'a self,
+                    search_pfx: &Prefix,
+                    guard: &'a Guard,
+                ) -> QueryResult<'a, Meta> {
+
+                    match search_pfx.addr() {
+                        std::net::IpAddr::V4(addr) => self.v4.less_specifics_from(
+                            PrefixId::<IPv4>::new(
+                                addr.into(),
+                                search_pfx.len(),
+                            ),
+                            guard
+                        ),
+                        std::net::IpAddr::V6(addr) => self.v6.less_specifics_from(
+                            PrefixId::<IPv6>::new(
+                                addr.into(),
+                                search_pfx.len(),
+                            ),
+                            guard
+                        ),
+                    }
+                }
 
 
-            pub fn less_specifics_iter_from(&'a self,
-                search_pfx: &Prefix,
-                guard: &'a Guard,
+                pub fn less_specifics_iter_from(&'a self,
+                    search_pfx: &Prefix,
+                    guard: &'a Guard,
+                    ) -> impl Iterator<Item=routecore::bgp::PrefixRecord<Meta>> + 'a {
+                        let (left, right) = match search_pfx.addr() {
+                            std::net::IpAddr::V4(addr) => {
+                                (Some(self.v4.store.less_specific_prefix_iter(
+                                    PrefixId::<IPv4>::new(
+                                        addr.into(),
+                                        search_pfx.len(),
+                                    ),
+                                    guard
+                                ).map(|p| routecore::bgp::PrefixRecord::from(p))), None)
+                            }
+                            std::net::IpAddr::V6(addr) => {
+                                (None, Some(self.v6.store.less_specific_prefix_iter(
+                                    PrefixId::<IPv6>::new(
+                                        addr.into(),
+                                        search_pfx.len(),
+                                    ),
+                                    guard
+                                ).map(|p| routecore::bgp::PrefixRecord::from(p))))
+                            }
+                        };
+                        left.into_iter().flatten().chain(right.into_iter().flatten())
+                    }
+
+                pub fn more_specifics_iter_from(&'a self,
+                    search_pfx: &Prefix,
+                    guard: &'a Guard,
                 ) -> impl Iterator<Item=routecore::bgp::PrefixRecord<Meta>> + 'a {
                     let (left, right) = match search_pfx.addr() {
                         std::net::IpAddr::V4(addr) => {
-                            (Some(self.v4.store.less_specific_prefix_iter(
+                            (Some(self.v4.store.more_specific_prefix_iter_from(
                                 PrefixId::<IPv4>::new(
                                     addr.into(),
                                     search_pfx.len(),
@@ -490,7 +582,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                             ).map(|p| routecore::bgp::PrefixRecord::from(p))), None)
                         }
                         std::net::IpAddr::V6(addr) => {
-                            (None, Some(self.v6.store.less_specific_prefix_iter(
+                            (None, Some(self.v6.store.more_specific_prefix_iter_from(
                                 PrefixId::<IPv6>::new(
                                     addr.into(),
                                     search_pfx.len(),
@@ -502,122 +594,95 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                     left.into_iter().flatten().chain(right.into_iter().flatten())
                 }
 
-            pub fn more_specifics_iter_from(&'a self,
-                search_pfx: &Prefix,
-                guard: &'a Guard,
-            ) -> impl Iterator<Item=routecore::bgp::PrefixRecord<Meta>> + 'a {
-                let (left, right) = match search_pfx.addr() {
-                    std::net::IpAddr::V4(addr) => {
-                        (Some(self.v4.store.more_specific_prefix_iter_from(
-                            PrefixId::<IPv4>::new(
-                                addr.into(),
-                                search_pfx.len(),
-                            ),
-                            guard
-                        ).map(|p| routecore::bgp::PrefixRecord::from(p))), None)
-                    }
-                    std::net::IpAddr::V6(addr) => {
-                        (None, Some(self.v6.store.more_specific_prefix_iter_from(
-                            PrefixId::<IPv6>::new(
-                                addr.into(),
-                                search_pfx.len(),
-                            ),
-                            guard
-                        ).map(|p| routecore::bgp::PrefixRecord::from(p))))
-                    }
-                };
-                left.into_iter().flatten().chain(right.into_iter().flatten())
-            }
-
-            pub fn insert(
-                &self,
-                prefix: &Prefix,
-                meta: Meta,
-            ) -> Result<(), std::boxed::Box<dyn std::error::Error>> {
-                match prefix.addr() {
-                    std::net::IpAddr::V4(addr) => {
-                        self.v4.insert(PrefixRecord::new_with_local_meta(
-                            *prefix,
-                            meta,
-                        ).into())
-                    }
-                    std::net::IpAddr::V6(addr) => {
-                        self.v6.insert(PrefixRecord::new_with_local_meta(
-                            *prefix,
-                            meta,
-                        ).into())
+                pub fn insert(
+                    &self,
+                    prefix: &Prefix,
+                    meta: Meta,
+                ) -> Result<(), std::boxed::Box<dyn std::error::Error>> {
+                    match prefix.addr() {
+                        std::net::IpAddr::V4(addr) => {
+                            self.v4.insert(PrefixRecord::new_with_local_meta(
+                                *prefix,
+                                meta,
+                            ).into())
+                        }
+                        std::net::IpAddr::V6(addr) => {
+                            self.v6.insert(PrefixRecord::new_with_local_meta(
+                                *prefix,
+                                meta,
+                            ).into())
+                        }
                     }
                 }
-            }
 
-            pub fn prefixes_iter(
-                &'a self,
-                guard: &'a Guard
-            ) -> impl Iterator<Item=routecore::bgp::PrefixRecord<Meta>> + 'a {
-                self.v4.store.prefixes_iter(guard)
-                    .map(|p| routecore::bgp::PrefixRecord::from(p))
-                    .chain(
-                        self.v6.store.prefixes_iter(guard)
+                pub fn prefixes_iter(
+                    &'a self,
+                    guard: &'a Guard
+                ) -> impl Iterator<Item=routecore::bgp::PrefixRecord<Meta>> + 'a {
+                    self.v4.store.prefixes_iter(guard)
                         .map(|p| routecore::bgp::PrefixRecord::from(p))
-                    )
-            }
+                        .chain(
+                            self.v6.store.prefixes_iter(guard)
+                            .map(|p| routecore::bgp::PrefixRecord::from(p))
+                        )
+                }
 
-            pub fn prefixes_iter_v4(
-                &'a self,
-                guard: &'a Guard
-            ) -> impl Iterator<Item=routecore::bgp::PrefixRecord<Meta>> + 'a {
-                self.v4.store.prefixes_iter(guard)
-                    .map(|p| routecore::bgp::PrefixRecord::from(p))
-            }
+                pub fn prefixes_iter_v4(
+                    &'a self,
+                    guard: &'a Guard
+                ) -> impl Iterator<Item=routecore::bgp::PrefixRecord<Meta>> + 'a {
+                    self.v4.store.prefixes_iter(guard)
+                        .map(|p| routecore::bgp::PrefixRecord::from(p))
+                }
 
-            pub fn prefixes_iter_v6(
-                &'a self,
-                guard: &'a Guard
-            ) -> impl Iterator<Item=routecore::bgp::PrefixRecord<Meta>> + 'a {
-                self.v6.store.prefixes_iter(guard)
-                    .map(|p| routecore::bgp::PrefixRecord::from(p))
-            }
+                pub fn prefixes_iter_v6(
+                    &'a self,
+                    guard: &'a Guard
+                ) -> impl Iterator<Item=routecore::bgp::PrefixRecord<Meta>> + 'a {
+                    self.v6.store.prefixes_iter(guard)
+                        .map(|p| routecore::bgp::PrefixRecord::from(p))
+                }
 
-            pub fn prefixes_len(&self) -> usize {
-                self.v4.store.get_prefixes_len()
-                + self.v6.store.get_prefixes_len()
-            }
+                pub fn prefixes_len(&self) -> usize {
+                    self.v4.store.get_prefixes_len()
+                    + self.v6.store.get_prefixes_len()
+                }
 
-            pub fn prefixes_v4_len(&self) -> usize {
-                self.v4.store.get_prefixes_len()
-            }
+                pub fn prefixes_v4_len(&self) -> usize {
+                    self.v4.store.get_prefixes_len()
+                }
 
-            pub fn prefixes_v6_len(&self) -> usize {
-                self.v6.store.get_prefixes_len()
-            }
+                pub fn prefixes_v6_len(&self) -> usize {
+                    self.v6.store.get_prefixes_len()
+                }
 
-            pub fn nodes_len(&self) -> usize {
-                self.v4.store.get_nodes_len()
-                + self.v6.store.get_nodes_len()
-            }
+                pub fn nodes_len(&self) -> usize {
+                    self.v4.store.get_nodes_len()
+                    + self.v6.store.get_nodes_len()
+                }
 
-            pub fn nodes_v4_len(&self) -> usize {
-                self.v4.store.get_nodes_len()
-            }
+                pub fn nodes_v4_len(&self) -> usize {
+                    self.v4.store.get_nodes_len()
+                }
 
-            pub fn nodes_v6_len(&self) -> usize {
-                self.v6.store.get_nodes_len()
-            }
+                pub fn nodes_v6_len(&self) -> usize {
+                    self.v6.store.get_nodes_len()
+                }
 
-            #[cfg(feature = "cli")]
-            pub fn print_funky_stats(&self) {
-                println!("{}", self.v4);
-                println!("{}", self.v6);
-            }
+                #[cfg(feature = "cli")]
+                pub fn print_funky_stats(&self) {
+                    println!("{}", self.v4);
+                    println!("{}", self.v6);
+                }
 
-            pub fn stats(&self) -> Stats {
-                Stats {
-                    v4: &self.v4.stats,
-                    v6: &self.v6.stats,
+                pub fn stats(&self) -> Stats {
+                    Stats {
+                        v4: &self.v4.stats,
+                        v6: &self.v6.stats,
+                    }
                 }
             }
-        }
-    };
+        };
 
     let result = quote! {
         #create_strides
