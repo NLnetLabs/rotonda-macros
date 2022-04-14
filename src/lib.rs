@@ -421,7 +421,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 /// # Example
                 /// ```
                 /// use std::{sync::Arc, thread};
-                /// use std::net::IPv4Addr;
+                /// use std::net::Ipv4Addr;
                 /// 
                 /// use rotonda_store::prelude::*;
                 /// use rotonda_store::MultiThreadedStore;
@@ -436,7 +436,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 ///         thread::spawn(move || {
                 ///              let pfxs = [
                 ///                 Prefix::new_relaxed(
-                ///                     Ipv4Addr:new(130, 55, 241, 0).into(),
+                ///                     Ipv4Addr::new(130, 55, 241, 0).into(),
                 ///                     24,
                 ///                 ),
                 ///                 Prefix::new_relaxed(
