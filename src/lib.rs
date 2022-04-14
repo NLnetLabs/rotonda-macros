@@ -324,40 +324,40 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
 
 /// Creates a new, user-named struct with user-defined specified stride sizes
 /// that can used as a store type.
-/// 
+///
 /// # Usage
 /// ```
 /// use rotonda_store::prelude::*;
-/// 
+///
 /// const IP4_STRIDE_ARRAY = [...];
 /// const IP6_STRIDE_ARRAY = [...];
-/// 
+///
 /// #[create_store((IPV4_STRIDE_ARRAY, IPV6_STRIDE_ARRAY))]
 /// struct NuStorage;
 /// ```
-/// 
+///
 /// This will create a `NuStorage` struct, that can be used as a regular
 /// store.
-/// 
+///
 /// The stride-sizes can be any of \[3,4,5\], and they should add up
 /// to the total number of bits in the address family (32 for IPv4 and
 /// 128 for IPv6). Stride sizes in the array will be repeated if the sum
 /// of them falls short of the total number of bits for the address
 /// family.
-/// 
+///
 /// # Example
 /// ```
 /// use rotonda_store::prelude::*;
 ///
 /// // The default stride sizes for IPv4, IPv6, resp.
 /// #[create_store((
-///     [5, 5, 4, 3, 3, 3, 3, 3, 3, 3], 
-///     [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 
+///     [5, 5, 4, 3, 3, 3, 3, 3, 3, 3],
+///     [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
 ///     4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4]
 /// ))]
 /// struct NuStore;
-/// 
-/// let store = Arc::new(NuStore::<NoMeta>::new()); 
+///
+/// let store = Arc::new(NuStore::<NoMeta>::new());
 /// ```
 #[proc_macro_attribute]
 pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
@@ -384,196 +384,292 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
     };
 
     let store = quote! {
-            /// A concurrently read/writable, lock-free Prefix Store, for use in a
-            /// multi-threaded context.
-            pub struct #store_name<
+        /// A concurrently read/writable, lock-free Prefix Store, for use in a
+        /// multi-threaded context.
+        pub struct #store_name<
+            Meta: routecore::record::Meta + MergeUpdate,
+        > {
+            v4: #strides4_name<Meta>,
+            v6: #strides6_name<Meta>,
+        }
+
+        impl<
                 Meta: routecore::record::Meta + MergeUpdate,
-            > {
-                v4: #strides4_name<Meta>,
-                v6: #strides6_name<Meta>,
+            > Default for #store_name<Meta>
+        {
+            fn default() -> Self {
+                Self::new()
             }
+        }
 
-            impl<
-                    Meta: routecore::record::Meta + MergeUpdate,
-                > Default for #store_name<Meta>
-            {
-                fn default() -> Self {
-                    Self::new()
-                }
-            }
-
-            impl<
-                    Meta: routecore::record::Meta + MergeUpdate,
-                > #store_name<Meta>
-            {
-                /// Creates a new empty store with a tree for IPv4 and on for IPv6.
-                ///
-                /// The store will be created with the default stride sizes. After
-                /// creation you can wrap the store in an Arc<_> and `clone()` that
-                /// for every thread that needs read access and/or write acces to
-                /// it. As a convenience both read and write methods take a `&self`
-                /// instead of `&mut self`.
-                /// 
-                /// If you need custom stride sizes you can use the 
-                /// [`#[create_store]`](rotonda_macros::create_store) macro to 
-                /// create a struct with custom stride sizes.
-                ///
-                /// # Example
-                /// ```
-                /// use std::{sync::Arc, thread};
-                /// use std::net::Ipv4Addr;
-                /// 
-                /// use rotonda_store::prelude::*;
-                /// use rotonda_store::MultiThreadedStore;
-                /// use routecore::record::NoMeta;
-                /// 
-                /// let tree_bitmap = Arc::new(MultiThreadedStore::<NoMeta>::new());
-                ///
-                /// let _: Vec<_> = (0..16)
-                ///      .map(|_| {
-                ///         let tree_bitmap = tree_bitmap.clone();
-                ///
-                ///         thread::spawn(move || {
-                ///              let pfxs = [
-                ///                 Prefix::new_relaxed(
-                ///                     Ipv4Addr::new(130, 55, 241, 0).into(),
-                ///                     24,
-                ///                 ),
-                ///                 Prefix::new_relaxed(
-                ///                     Ipv4Addr::new(130, 55, 240, 0).into(),
-                ///                     24,
-                ///                 )
-                ///              ]; 
-                ///
-                ///              for pfx in pfxs.into_iter() {
-                ///                  println!("insert {}", pfx.unwrap());
-                ///                  tree_bitmap.insert(
-                ///                      &pfx.unwrap(), 
-                ///                      NoMeta::Empty
-                ///                  ).unwrap();
-                ///              }
-                ///          })
-                ///      }).map(|t| t.join()).collect();
-                /// ```
-                pub fn new() -> Self {
-                    Self {
-                        v4: #strides4_name::new(),
-                        v6: #strides6_name::new(),
-                    }
+        impl<
+                Meta: routecore::record::Meta + MergeUpdate,
+            > #store_name<Meta>
+        {
+            /// Creates a new empty store with a tree for IPv4 and on for IPv6.
+            ///
+            /// The store will be created with the default stride sizes. After
+            /// creation you can wrap the store in an Arc<_> and `clone()` that
+            /// for every thread that needs read access and/or write acces to
+            /// it. As a convenience both read and write methods take a `&self`
+            /// instead of `&mut self`.
+            ///
+            /// If you need custom stride sizes you can use the
+            /// [`#[create_store]`](rotonda_macros::create_store) macro to
+            /// create a struct with custom stride sizes.
+            ///
+            /// # Example
+            /// ```
+            /// use std::{sync::Arc, thread};
+            /// use std::net::Ipv4Addr;
+            ///
+            /// use rotonda_store::prelude::*;
+            /// use rotonda_store::MultiThreadedStore;
+            /// use routecore::record::NoMeta;
+            ///
+            /// let tree_bitmap = Arc::new(MultiThreadedStore::<NoMeta>::new());
+            ///
+            /// let _: Vec<_> = (0..16)
+            ///      .map(|_| {
+            ///         let tree_bitmap = tree_bitmap.clone();
+            ///
+            ///         thread::spawn(move || {
+            ///              let pfxs = [
+            ///                 Prefix::new_relaxed(
+            ///                     Ipv4Addr::new(130, 55, 241, 0).into(),
+            ///                     24,
+            ///                 ),
+            ///                 Prefix::new_relaxed(
+            ///                     Ipv4Addr::new(130, 55, 240, 0).into(),
+            ///                     24,
+            ///                 )
+            ///              ];
+            ///
+            ///              for pfx in pfxs.into_iter() {
+            ///                  println!("insert {}", pfx.unwrap());
+            ///                  tree_bitmap.insert(
+            ///                      &pfx.unwrap(),
+            ///                      NoMeta::Empty
+            ///                  ).unwrap();
+            ///              }
+            ///          })
+            ///      }).map(|t| t.join()).collect();
+            /// ```
+            pub fn new() -> Self {
+                Self {
+                    v4: #strides4_name::new(),
+                    v6: #strides6_name::new(),
                 }
             }
+        }
 
-            impl<'a, Meta: routecore::record::Meta + MergeUpdate,
-                > #store_name<Meta>
-            {
-                pub fn match_prefix(
-                    &'a self,
-                    search_pfx: &Prefix,
-                    options: &MatchOptions,
-                    guard: &'a Guard,
-                ) -> QueryResult<'a, Meta> {
+        /// Search for and return one or more prefixes that match the given
+        /// `search_pfx` argument.
+        ///
+        /// The search will return a [QueryResult] with the matching prefix,
+        /// if any, the type of match for the found prefix and the more and
+        /// less specifics for the found prefix. The inclusion of more- or
+        /// less-specifics and the requested `match_type` is configurable
+        /// through the [MatchOptions] argument.
+        ///
+        /// # Example
+        /// ```
+        /// use std::net::Ipv4Addr;
+        ///
+        /// use rotonda_store::{MultiThreadedStore, epoch};
+        /// use rotonda_store::{addr::Prefix, PrefixAs, MatchOptions, 
+        ///     MatchType};
+        ///
+        /// let store = MultiThreadedStore::<PrefixAs>::new();
+        /// let guard = &epoch::pin();
+        ///
+        /// let pfx_addr = "185.49.140.0".parse::<Ipv4Addr>()
+        ///         .unwrap()
+        ///         .into();
+        ///
+        /// store.insert(
+        ///     &Prefix::new(pfx_addr, 22).unwrap(),
+        ///     PrefixAs(211321)
+        /// );
+        ///
+        /// let res = store.match_prefix(
+        ///     &Prefix::new(pfx_addr, 24).unwrap(),
+        ///     &MatchOptions {
+        ///         match_type: MatchType::LongestMatch,
+        ///         include_less_specifics: false,
+        ///         include_more_specifics: false
+        ///     },
+        ///     guard
+        /// );
+        ///    
+        /// assert_eq!(res.prefix_meta.unwrap().0, 211321);
+        /// 
+        /// let res = store.match_prefix(
+        ///     &Prefix::new(pfx_addr, 24).unwrap(),
+        ///         &MatchOptions {
+        ///             match_type: MatchType::ExactMatch,
+        ///             include_less_specifics: false,
+        ///             include_more_specifics: false
+        ///         },
+        ///         guard
+        ///     );
+        ///  
+        /// assert!(res.match_type.is_empty());
+        ///     
+        /// ```
+        impl<'a, Meta: routecore::record::Meta + MergeUpdate,
+            > #store_name<Meta>
+        {
+            pub fn match_prefix(
+                &'a self,
+                search_pfx: &Prefix,
+                options: &MatchOptions,
+                guard: &'a Guard,
+            ) -> QueryResult<'a, Meta> {
 
-                    match search_pfx.addr() {
-                        std::net::IpAddr::V4(addr) => self.v4.match_prefix_by_store_direct(
-                            PrefixId::<IPv4>::new(
-                                addr.into(),
-                                search_pfx.len(),
-                            ),
-                            options,
-                            guard
+                match search_pfx.addr() {
+                    std::net::IpAddr::V4(addr) => self.v4.match_prefix_by_store_direct(
+                        PrefixId::<IPv4>::new(
+                            addr.into(),
+                            search_pfx.len(),
                         ),
-                        std::net::IpAddr::V6(addr) => self.v6.match_prefix_by_store_direct(
-                            PrefixId::<IPv6>::new(
-                                addr.into(),
-                                search_pfx.len(),
-                            ),
-                            options,
-                            guard
+                        options,
+                        guard
+                    ),
+                    std::net::IpAddr::V6(addr) => self.v6.match_prefix_by_store_direct(
+                        PrefixId::<IPv6>::new(
+                            addr.into(),
+                            search_pfx.len(),
                         ),
-                    }
+                        options,
+                        guard
+                    ),
                 }
+            }
 
-                pub fn more_specifics_from(&'a self,
-                    search_pfx: &Prefix,
-                    guard: &'a Guard,
-                ) -> QueryResult<'a, Meta> {
+            /// Return a [QueryResult] that contains all the more-specific
+            /// prefixes of the `search_pfx` in the store, including the
+            /// meta-data of these prefixes.
+            ///
+            /// The `search_pfx` argument can be either a IPv4 or an IPv6
+            /// prefix. The `search_pfx` itself doesn't have to be present
+            /// in the store for an iterator to be non-empty, i.e. if
+            /// more-specific prefixes exist for a non-existant
+            /// `search_pfx` the iterator will yield these more-specific
+            /// prefixes.
+            ///
+            /// The `guard` should be a `&epoch::pin()`. It allows the
+            /// QuerySet to contain references to the meta-data objects,
+            /// instead of cloning them into it.
+            pub fn more_specifics_from(&'a self,
+                search_pfx: &Prefix,
+                guard: &'a Guard,
+            ) -> QueryResult<'a, Meta> {
 
-                    match search_pfx.addr() {
-                        std::net::IpAddr::V4(addr) => self.v4.more_specifics_from(
-                            PrefixId::<IPv4>::new(
-                                addr.into(),
-                                search_pfx.len(),
-                            ),
-                            guard
+                match search_pfx.addr() {
+                    std::net::IpAddr::V4(addr) => self.v4.more_specifics_from(
+                        PrefixId::<IPv4>::new(
+                            addr.into(),
+                            search_pfx.len(),
                         ),
-                        std::net::IpAddr::V6(addr) => self.v6.more_specifics_from(
-                            PrefixId::<IPv6>::new(
-                                addr.into(),
-                                search_pfx.len(),
-                            ),
-                            guard
+                        guard
+                    ),
+                    std::net::IpAddr::V6(addr) => self.v6.more_specifics_from(
+                        PrefixId::<IPv6>::new(
+                            addr.into(),
+                            search_pfx.len(),
                         ),
-                    }
+                        guard
+                    ),
                 }
+            }
 
-                pub fn less_specifics_from(&'a self,
-                    search_pfx: &Prefix,
-                    guard: &'a Guard,
-                ) -> QueryResult<'a, Meta> {
+            /// Return a `QuerySet` that contains all the less-specific
+            /// prefixes of the `search_pfx` in the store, including the
+            /// meta-data of these prefixes.
+            ///
+            /// The `search_pfx` argument can be either a IPv4 or an IPv6
+            /// prefix. The `search_pfx` itself doesn't have to be present
+            /// in the store for an iterator to be non-empty, i.e. if
+            /// less-specific prefixes exist for a non-existant
+            /// `search_pfx` the iterator will yield these less-specific
+            /// prefixes.
+            ///
+            /// The `guard` should be a `&epoch::pin()`. It allows the
+            /// QuerySet to contain references to the meta-data objects,
+            /// instead of cloning them into it.
+            pub fn less_specifics_from(&'a self,
+                search_pfx: &Prefix,
+                guard: &'a Guard,
+            ) -> QueryResult<'a, Meta> {
 
-                    match search_pfx.addr() {
-                        std::net::IpAddr::V4(addr) => self.v4.less_specifics_from(
-                            PrefixId::<IPv4>::new(
-                                addr.into(),
-                                search_pfx.len(),
-                            ),
-                            guard
+                match search_pfx.addr() {
+                    std::net::IpAddr::V4(addr) => self.v4.less_specifics_from(
+                        PrefixId::<IPv4>::new(
+                            addr.into(),
+                            search_pfx.len(),
                         ),
-                        std::net::IpAddr::V6(addr) => self.v6.less_specifics_from(
-                            PrefixId::<IPv6>::new(
-                                addr.into(),
-                                search_pfx.len(),
-                            ),
-                            guard
+                        guard
+                    ),
+                    std::net::IpAddr::V6(addr) => self.v6.less_specifics_from(
+                        PrefixId::<IPv6>::new(
+                            addr.into(),
+                            search_pfx.len(),
                         ),
-                    }
+                        guard
+                    ),
                 }
+            }
 
-
-                pub fn less_specifics_iter_from(&'a self,
-                    search_pfx: &Prefix,
-                    guard: &'a Guard,
-                    ) -> impl Iterator<Item=routecore::bgp::PrefixRecord<Meta>> + 'a {
-                        let (left, right) = match search_pfx.addr() {
-                            std::net::IpAddr::V4(addr) => {
-                                (Some(self.v4.store.less_specific_prefix_iter(
-                                    PrefixId::<IPv4>::new(
-                                        addr.into(),
-                                        search_pfx.len(),
-                                    ),
-                                    guard
-                                ).map(|p| routecore::bgp::PrefixRecord::from(p))), None)
-                            }
-                            std::net::IpAddr::V6(addr) => {
-                                (None, Some(self.v6.store.less_specific_prefix_iter(
-                                    PrefixId::<IPv6>::new(
-                                        addr.into(),
-                                        search_pfx.len(),
-                                    ),
-                                    guard
-                                ).map(|p| routecore::bgp::PrefixRecord::from(p))))
-                            }
-                        };
-                        left.into_iter().flatten().chain(right.into_iter().flatten())
-                    }
-
-                pub fn more_specifics_iter_from(&'a self,
-                    search_pfx: &Prefix,
-                    guard: &'a Guard,
+            /// Returns an iterator over all the less-specific prefixes
+            /// of the `search_prefix`, if present in the store, including
+            /// the meta-data of these prefixes.
+            ///
+            /// The `search_pfx` argument can be either a IPv4 or an IPv6
+            /// prefix. The `search_pfx` itself doesn't have to be present
+            /// in the store for an iterator to be non-empty, i.e. if
+            /// less-specific prefixes exist for a non-existant
+            /// `search_pfx` the iterator will yield these less-specific
+            /// prefixes.
+            ///
+            /// The `guard` should be a `&epoch::pin()`. It allows the
+            /// iterator to create and return references to the meta-data
+            /// objects to the caller (instead of cloning them).
+            ///
+            /// # Example
+            /// ```
+            /// use std::net::Ipv4Addr;
+            ///
+            /// use rotonda_store::{MultiThreadedStore, epoch};
+            /// use rotonda_store::{addr::Prefix, PrefixAs};
+            ///
+            ///
+            /// let store = MultiThreadedStore::<PrefixAs>::new();
+            /// let guard = epoch::pin();
+            ///
+            /// let pfx_addr = "185.49.140.0".parse::<Ipv4Addr>()
+            ///         .unwrap()
+            ///         .into();
+            ///
+            /// store.insert(
+            ///     &Prefix::new(pfx_addr, 22).unwrap(),
+            ///     PrefixAs(211321)
+            /// );
+            ///
+            /// for prefix_record in store.less_specifics_iter_from(
+            ///     &Prefix::new(pfx_addr, 24).unwrap(),
+            ///     &guard
+            /// ) {
+            ///    assert_eq!(prefix_record.meta.0, 211321);
+            /// }
+            /// ```
+            pub fn less_specifics_iter_from(&'a self,
+                search_pfx: &Prefix,
+                guard: &'a Guard,
                 ) -> impl Iterator<Item=routecore::bgp::PrefixRecord<Meta>> + 'a {
                     let (left, right) = match search_pfx.addr() {
                         std::net::IpAddr::V4(addr) => {
-                            (Some(self.v4.store.more_specific_prefix_iter_from(
+                            (Some(self.v4.store.less_specific_prefix_iter(
                                 PrefixId::<IPv4>::new(
                                     addr.into(),
                                     search_pfx.len(),
@@ -582,7 +678,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                             ).map(|p| routecore::bgp::PrefixRecord::from(p))), None)
                         }
                         std::net::IpAddr::V6(addr) => {
-                            (None, Some(self.v6.store.more_specific_prefix_iter_from(
+                            (None, Some(self.v6.store.less_specific_prefix_iter(
                                 PrefixId::<IPv6>::new(
                                     addr.into(),
                                     search_pfx.len(),
@@ -594,95 +690,308 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                     left.into_iter().flatten().chain(right.into_iter().flatten())
                 }
 
-                pub fn insert(
-                    &self,
-                    prefix: &Prefix,
-                    meta: Meta,
-                ) -> Result<(), std::boxed::Box<dyn std::error::Error>> {
-                    match prefix.addr() {
-                        std::net::IpAddr::V4(addr) => {
-                            self.v4.insert(PrefixRecord::new_with_local_meta(
-                                *prefix,
-                                meta,
-                            ).into())
-                        }
-                        std::net::IpAddr::V6(addr) => {
-                            self.v6.insert(PrefixRecord::new_with_local_meta(
-                                *prefix,
-                                meta,
-                            ).into())
-                        }
+            /// Returns an iterator over all the more-specifics prefixes
+            /// of the `search_prefix`, if present in the store, including
+            /// the meta-data of these prefixes.
+            ///
+            /// The `search_pfx` argument can be either a IPv4 or an IPv6
+            /// prefix. The `search_pfx` itself doesn't have to be present
+            /// in the store for an iterator to be non-empty, i.e. if
+            /// more-specific prefixes exist for a non-existant
+            /// `search_pfx` the iterator will yield these more-specific
+            /// prefixes.
+            ///
+            /// The `guard` should be a `&epoch::pin()`. It allows the
+            /// iterator to create and return references to the meta-data
+            /// objects to the caller (instead of cloning them).
+            ///
+            /// # Example
+            /// ```
+            /// use std::net::Ipv4Addr;
+            ///
+            /// use rotonda_store::{MultiThreadedStore, epoch};
+            /// use rotonda_store::{addr::Prefix, PrefixAs};
+            ///
+            ///
+            /// let store = MultiThreadedStore::<PrefixAs>::new();
+            /// let guard = epoch::pin();
+            ///
+            /// let pfx_addr = "185.49.140.0".parse::<Ipv4Addr>()
+            ///         .unwrap()
+            ///         .into();
+            ///
+            /// store.insert(
+            ///     &Prefix::new(pfx_addr, 24).unwrap(),
+            ///     PrefixAs(211321)
+            /// );
+            ///
+            /// for prefix_record in store.more_specifics_iter_from(
+            ///     &Prefix::new(pfx_addr, 22).unwrap(),
+            ///     &guard
+            /// ) {
+            ///    assert_eq!(prefix_record.meta.0, 211321);
+            /// }
+            /// ```
+            pub fn more_specifics_iter_from(&'a self,
+                search_pfx: &Prefix,
+                guard: &'a Guard,
+            ) -> impl Iterator<Item=routecore::bgp::PrefixRecord<Meta>> + 'a {
+                let (left, right) = match search_pfx.addr() {
+                    std::net::IpAddr::V4(addr) => {
+                        (Some(self.v4.store.more_specific_prefix_iter_from(
+                            PrefixId::<IPv4>::new(
+                                addr.into(),
+                                search_pfx.len(),
+                            ),
+                            guard
+                        ).map(|p| routecore::bgp::PrefixRecord::from(p))), None)
                     }
-                }
+                    std::net::IpAddr::V6(addr) => {
+                        (None, Some(self.v6.store.more_specific_prefix_iter_from(
+                            PrefixId::<IPv6>::new(
+                                addr.into(),
+                                search_pfx.len(),
+                            ),
+                            guard
+                        ).map(|p| routecore::bgp::PrefixRecord::from(p))))
+                    }
+                };
+                left.into_iter().flatten().chain(right.into_iter().flatten())
+            }
 
-                pub fn prefixes_iter(
-                    &'a self,
-                    guard: &'a Guard
-                ) -> impl Iterator<Item=routecore::bgp::PrefixRecord<Meta>> + 'a {
-                    self.v4.store.prefixes_iter(guard)
-                        .map(|p| routecore::bgp::PrefixRecord::from(p))
-                        .chain(
-                            self.v6.store.prefixes_iter(guard)
-                            .map(|p| routecore::bgp::PrefixRecord::from(p))
-                        )
-                }
-
-                pub fn prefixes_iter_v4(
-                    &'a self,
-                    guard: &'a Guard
-                ) -> impl Iterator<Item=routecore::bgp::PrefixRecord<Meta>> + 'a {
-                    self.v4.store.prefixes_iter(guard)
-                        .map(|p| routecore::bgp::PrefixRecord::from(p))
-                }
-
-                pub fn prefixes_iter_v6(
-                    &'a self,
-                    guard: &'a Guard
-                ) -> impl Iterator<Item=routecore::bgp::PrefixRecord<Meta>> + 'a {
-                    self.v6.store.prefixes_iter(guard)
-                        .map(|p| routecore::bgp::PrefixRecord::from(p))
-                }
-
-                pub fn prefixes_len(&self) -> usize {
-                    self.v4.store.get_prefixes_len()
-                    + self.v6.store.get_prefixes_len()
-                }
-
-                pub fn prefixes_v4_len(&self) -> usize {
-                    self.v4.store.get_prefixes_len()
-                }
-
-                pub fn prefixes_v6_len(&self) -> usize {
-                    self.v6.store.get_prefixes_len()
-                }
-
-                pub fn nodes_len(&self) -> usize {
-                    self.v4.store.get_nodes_len()
-                    + self.v6.store.get_nodes_len()
-                }
-
-                pub fn nodes_v4_len(&self) -> usize {
-                    self.v4.store.get_nodes_len()
-                }
-
-                pub fn nodes_v6_len(&self) -> usize {
-                    self.v6.store.get_nodes_len()
-                }
-
-                #[cfg(feature = "cli")]
-                pub fn print_funky_stats(&self) {
-                    println!("{}", self.v4);
-                    println!("{}", self.v6);
-                }
-
-                pub fn stats(&self) -> Stats {
-                    Stats {
-                        v4: &self.v4.stats,
-                        v6: &self.v6.stats,
+            pub fn insert(
+                &self,
+                prefix: &Prefix,
+                meta: Meta,
+            ) -> Result<(), std::boxed::Box<dyn std::error::Error>> {
+                match prefix.addr() {
+                    std::net::IpAddr::V4(addr) => {
+                        self.v4.insert(PrefixRecord::new_with_local_meta(
+                            *prefix,
+                            meta,
+                        ).into())
+                    }
+                    std::net::IpAddr::V6(addr) => {
+                        self.v6.insert(PrefixRecord::new_with_local_meta(
+                            *prefix,
+                            meta,
+                        ).into())
                     }
                 }
             }
-        };
+
+            /// Returns an unordered iterator over all prefixes, both IPv4
+            /// and IPv6, currently in the store, including meta-data.
+            /// 
+            /// Although the iterator is unordered within an address-family,
+            /// it first iterates over all IPv4 addresses and then over all
+            /// IPv6 addresses.
+            ///
+            /// The `guard` should be a `&epoch::pin()`. It allows the
+            /// iterator to create and return references to the meta-data
+            /// objects to the caller (instead of cloning them).
+            /// 
+            /// # Example
+            /// ```
+            /// use std::net::Ipv4Addr;
+            ///
+            /// use rotonda_store::{MultiThreadedStore, epoch};
+            /// use rotonda_store::{addr::Prefix, PrefixAs};
+            ///
+            /// let store = MultiThreadedStore::<PrefixAs>::new();
+            /// let guard = epoch::pin();
+            ///
+            /// let pfx_addr = "185.49.140.0".parse::<Ipv4Addr>()
+            ///         .unwrap()
+            ///         .into();
+            /// let our_asn = PrefixAs(211321);
+            ///
+            /// store.insert(&Prefix::new(pfx_addr, 22).unwrap(), our_asn);
+            /// store.insert(&Prefix::new(pfx_addr, 23).unwrap(), our_asn);
+            /// store.insert(&Prefix::new(pfx_addr, 24).unwrap(), our_asn);
+            /// store.insert(&Prefix::new(pfx_addr, 25).unwrap(), our_asn);
+            ///
+            /// let mut iter = store.prefixes_iter(&guard);
+            ///
+            /// assert_eq!(iter.next().unwrap().prefix, 
+            ///     Prefix::new(pfx_addr, 22).unwrap());
+            /// assert_eq!(iter.next().unwrap().prefix, 
+            ///     Prefix::new(pfx_addr, 23).unwrap());
+            /// assert_eq!(iter.next().unwrap().prefix, 
+            ///     Prefix::new(pfx_addr, 24).unwrap());
+            /// assert_eq!(iter.next().unwrap().prefix, 
+            ///     Prefix::new(pfx_addr, 25).unwrap());
+            /// ```
+            pub fn prefixes_iter(
+                &'a self,
+                guard: &'a Guard
+            ) -> impl Iterator<Item=routecore::bgp::PrefixRecord<Meta>> + 'a {
+                self.v4.store.prefixes_iter(guard)
+                    .map(|p| routecore::bgp::PrefixRecord::from(p))
+                    .chain(
+                        self.v6.store.prefixes_iter(guard)
+                        .map(|p| routecore::bgp::PrefixRecord::from(p))
+                    )
+            }
+
+            /// Returns an unordered iterator over all IPv4 prefixes in the
+            /// currently in the store, including meta-data.
+            /// 
+            /// The `guard` should be a `&epoch::pin()`. It allows the
+            /// iterator to create and return references to the meta-data
+            /// objects to the caller (instead of cloning them).
+            /// 
+            /// # Example
+            /// ```
+            /// use std::net::Ipv4Addr;
+            ///
+            /// use rotonda_store::{MultiThreadedStore, epoch};
+            /// use rotonda_store::{addr::Prefix, PrefixAs};
+            ///
+            /// let store = MultiThreadedStore::<PrefixAs>::new();
+            /// let guard = epoch::pin();
+            ///
+            /// let pfx_addr = "185.49.140.0".parse::<Ipv4Addr>()
+            ///         .unwrap()
+            ///         .into();
+            /// let our_asn = PrefixAs(211321);
+            ///
+            /// store.insert(&Prefix::new(pfx_addr, 22).unwrap(), our_asn);
+            /// store.insert(&Prefix::new(pfx_addr, 23).unwrap(), our_asn);
+            /// store.insert(&Prefix::new(pfx_addr, 24).unwrap(), our_asn);
+            /// store.insert(&Prefix::new(pfx_addr, 25).unwrap(), our_asn);
+            ///
+            /// let mut iter = store.prefixes_iter(&guard);
+            ///
+            /// assert_eq!(iter.next().unwrap().prefix, 
+            ///     Prefix::new(pfx_addr, 22).unwrap());
+            /// assert_eq!(iter.next().unwrap().prefix, 
+            ///     Prefix::new(pfx_addr, 23).unwrap());
+            /// assert_eq!(iter.next().unwrap().prefix, 
+            ///     Prefix::new(pfx_addr, 24).unwrap());
+            /// assert_eq!(iter.next().unwrap().prefix, 
+            ///     Prefix::new(pfx_addr, 25).unwrap());
+            /// ```
+            pub fn prefixes_iter_v4(
+                &'a self,
+                guard: &'a Guard
+            ) -> impl Iterator<Item=routecore::bgp::PrefixRecord<Meta>> + 'a {
+                self.v4.store.prefixes_iter(guard)
+                    .map(|p| routecore::bgp::PrefixRecord::from(p))
+            }
+
+            /// Returns an unordered iterator over all IPv6 prefixes in the
+            /// currently in the store, including meta-data.
+            /// 
+            /// The `guard` should be a `&epoch::pin()`. It allows the
+            /// iterator to create and return references to the meta-data
+            /// objects to the caller (instead of cloning them).
+            /// 
+            /// # Example
+            /// ```
+            /// use std::net::Ipv6Addr;
+            ///
+            /// use rotonda_store::{MultiThreadedStore, epoch};
+            /// use rotonda_store::{addr::Prefix, PrefixAs};
+            ///
+            /// let store = MultiThreadedStore::<PrefixAs>::new();
+            /// let guard = epoch::pin();
+            ///
+            /// let pfx_addr = "2a04:b900::".parse::<Ipv6Addr>()
+            ///         .unwrap()
+            ///         .into();
+            /// let our_asn = PrefixAs(211321);
+            ///
+            /// store.insert(&Prefix::new(pfx_addr, 29).unwrap(), our_asn);
+            /// store.insert(&Prefix::new(pfx_addr, 48).unwrap(), our_asn);
+            /// store.insert(&Prefix::new(pfx_addr, 56).unwrap(), our_asn);
+            /// store.insert(&Prefix::new(pfx_addr, 64).unwrap(), our_asn);
+            ///
+            /// let mut iter = store.prefixes_iter(&guard);
+            ///
+            /// assert_eq!(iter.next().unwrap().prefix, 
+            ///     Prefix::new(pfx_addr, 29).unwrap());
+            /// assert_eq!(iter.next().unwrap().prefix, 
+            ///     Prefix::new(pfx_addr, 48).unwrap());
+            /// assert_eq!(iter.next().unwrap().prefix, 
+            ///     Prefix::new(pfx_addr, 56).unwrap());
+            /// assert_eq!(iter.next().unwrap().prefix, 
+            ///     Prefix::new(pfx_addr, 64).unwrap());
+            /// ```
+            pub fn prefixes_iter_v6(
+                &'a self,
+                guard: &'a Guard
+            ) -> impl Iterator<Item=routecore::bgp::PrefixRecord<Meta>> + 'a {
+                self.v6.store.prefixes_iter(guard)
+                    .map(|p| routecore::bgp::PrefixRecord::from(p))
+            }
+
+            /// Returns the number of all prefixes in the store.
+            /// 
+            /// Note that this method will actually traverse the complete
+            /// tree.
+            pub fn prefixes_len(&self) -> usize {
+                self.v4.store.get_prefixes_len()
+                + self.v6.store.get_prefixes_len()
+            }
+
+            /// Returns the number of all IPv4 prefixes in the store.
+            /// 
+            /// Note that this method will actually traverse the complete
+            /// tree.
+            pub fn prefixes_v4_len(&self) -> usize {
+                self.v4.store.get_prefixes_len()
+            }
+
+            /// Returns the number of all IPv6 prefixes in the store.
+            /// 
+            /// Note that this method will actually traverse the complete
+            /// tree.
+            pub fn prefixes_v6_len(&self) -> usize {
+                self.v6.store.get_prefixes_len()
+            }
+
+            /// Returns the number of nodes in the store.
+            /// 
+            /// Note that this method will actually traverse the complete
+            /// tree.
+            pub fn nodes_len(&self) -> usize {
+                self.v4.store.get_nodes_len()
+                + self.v6.store.get_nodes_len()
+            }
+
+            /// Returns the number of IPv4 nodes in the store.
+            /// 
+            /// Note that this method will actually traverse the complete
+            /// tree.
+            pub fn nodes_v4_len(&self) -> usize {
+                self.v4.store.get_nodes_len()
+            }
+
+            /// Returns the number of IPv6 nodes in the store.
+            /// 
+            /// Note that this method will actually traverse the complete
+            /// tree.
+            pub fn nodes_v6_len(&self) -> usize {
+                self.v6.store.get_nodes_len()
+            }
+
+            /// Print the store statistics to the standard output.
+            #[cfg(feature = "cli")]
+            pub fn print_funky_stats(&self) {
+                println!("{}", self.v4);
+                println!("{}", self.v6);
+            }
+
+            // The Store statistics.
+            pub fn stats(&self) -> Stats {
+                Stats {
+                    v4: &self.v4.stats,
+                    v6: &self.v6.stats,
+                }
+            }
+        }
+    };
 
     let result = quote! {
         #create_strides
