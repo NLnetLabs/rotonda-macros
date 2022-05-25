@@ -477,7 +477,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
         /// use std::net::Ipv4Addr;
         ///
         /// use rotonda_store::{MultiThreadedStore, epoch};
-        /// use rotonda_store::{addr::Prefix, PrefixAs, MatchOptions, 
+        /// use rotonda_store::{addr::Prefix, PrefixAs, MatchOptions,
         ///     MatchType};
         ///
         /// let store = MultiThreadedStore::<PrefixAs>::new();
@@ -501,9 +501,9 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
         ///     },
         ///     guard
         /// );
-        ///    
+        ///
         /// assert_eq!(res.prefix_meta.unwrap().0, 211321);
-        /// 
+        ///
         /// let res = store.match_prefix(
         ///     &Prefix::new(pfx_addr, 24).unwrap(),
         ///         &MatchOptions {
@@ -513,9 +513,9 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
         ///         },
         ///         guard
         ///     );
-        ///  
+        ///
         /// assert!(res.match_type.is_empty());
-        ///     
+        ///
         /// ```
         impl<'a, Meta: routecore::record::Meta + MergeUpdate,
             > #store_name<Meta>
@@ -669,22 +669,34 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 ) -> impl Iterator<Item=routecore::bgp::PrefixRecord<Meta>> + 'a {
                     let (left, right) = match search_pfx.addr() {
                         std::net::IpAddr::V4(addr) => {
-                            (Some(self.v4.store.less_specific_prefix_iter(
-                                PrefixId::<IPv4>::new(
-                                    addr.into(),
-                                    search_pfx.len(),
+                            (
+                                Some(self.v4.store.less_specific_prefix_iter(
+                                        PrefixId::<IPv4>::new(
+                                            addr.into(),
+                                            search_pfx.len(),
+                                        ),
+                                        guard
+                                    )
+                                    .map(|p| p.iter_latest_unique_pub_records(guard))
+                                    .flatten()
                                 ),
-                                guard
-                            ).map(|p| routecore::bgp::PrefixRecord::from(p))), None)
+                                None
+                            )
                         }
                         std::net::IpAddr::V6(addr) => {
-                            (None, Some(self.v6.store.less_specific_prefix_iter(
-                                PrefixId::<IPv6>::new(
-                                    addr.into(),
-                                    search_pfx.len(),
-                                ),
-                                guard
-                            ).map(|p| routecore::bgp::PrefixRecord::from(p))))
+                            (
+                                None,
+                                Some(self.v6.store.less_specific_prefix_iter(
+                                        PrefixId::<IPv6>::new(
+                                            addr.into(),
+                                            search_pfx.len(),
+                                        ),
+                                        guard
+                                    )
+                                    .map(|p| p.iter_latest_unique_pub_records(guard))
+                                    .flatten()
+                                )
+                            )
                         }
                     };
                     left.into_iter().flatten().chain(right.into_iter().flatten())
@@ -735,25 +747,37 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             pub fn more_specifics_iter_from(&'a self,
                 search_pfx: &Prefix,
                 guard: &'a Guard,
-            ) -> impl Iterator<Item=routecore::bgp::PrefixRecord<Meta>> + 'a {
+            ) -> impl Iterator<Item=PrefixRecord<'a, Meta>> + 'a {
                 let (left, right) = match search_pfx.addr() {
                     std::net::IpAddr::V4(addr) => {
-                        (Some(self.v4.store.more_specific_prefix_iter_from(
-                            PrefixId::<IPv4>::new(
-                                addr.into(),
-                                search_pfx.len(),
+                        (
+                            Some(self.v4.store.more_specific_prefix_iter_from(
+                                    PrefixId::<IPv4>::new(
+                                        addr.into(),
+                                        search_pfx.len(),
+                                    ),
+                                    guard
+                                )
+                                .map(|p| p.iter_latest_unique_pub_records(guard))
+                                .flatten()
                             ),
-                            guard
-                        ).map(|p| routecore::bgp::PrefixRecord::from(p))), None)
+                            None
+                        )
                     }
                     std::net::IpAddr::V6(addr) => {
-                        (None, Some(self.v6.store.more_specific_prefix_iter_from(
-                            PrefixId::<IPv6>::new(
-                                addr.into(),
-                                search_pfx.len(),
-                            ),
-                            guard
-                        ).map(|p| routecore::bgp::PrefixRecord::from(p))))
+                        (
+                            None,
+                            Some(self.v6.store.more_specific_prefix_iter_from(
+                                    PrefixId::<IPv6>::new(
+                                        addr.into(),
+                                        search_pfx.len(),
+                                    ),
+                                    guard
+                                )
+                                .map(|p| p.iter_latest_unique_pub_records(guard))
+                                .flatten()
+                            )
+                        )
                     }
                 };
                 left.into_iter().flatten().chain(right.into_iter().flatten())
@@ -782,7 +806,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
 
             /// Returns an unordered iterator over all prefixes, both IPv4
             /// and IPv6, currently in the store, including meta-data.
-            /// 
+            ///
             /// Although the iterator is unordered within an address-family,
             /// it first iterates over all IPv4 addresses and then over all
             /// IPv6 addresses.
@@ -790,7 +814,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// The `guard` should be a `&epoch::pin()`. It allows the
             /// iterator to create and return references to the meta-data
             /// objects to the caller (instead of cloning them).
-            /// 
+            ///
             /// # Example
             /// ```
             /// use std::net::Ipv4Addr;
@@ -813,13 +837,13 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             ///
             /// let mut iter = store.prefixes_iter(&guard);
             ///
-            /// assert_eq!(iter.next().unwrap().prefix, 
+            /// assert_eq!(iter.next().unwrap().prefix,
             ///     Prefix::new(pfx_addr, 22).unwrap());
-            /// assert_eq!(iter.next().unwrap().prefix, 
+            /// assert_eq!(iter.next().unwrap().prefix,
             ///     Prefix::new(pfx_addr, 23).unwrap());
-            /// assert_eq!(iter.next().unwrap().prefix, 
+            /// assert_eq!(iter.next().unwrap().prefix,
             ///     Prefix::new(pfx_addr, 24).unwrap());
-            /// assert_eq!(iter.next().unwrap().prefix, 
+            /// assert_eq!(iter.next().unwrap().prefix,
             ///     Prefix::new(pfx_addr, 25).unwrap());
             /// ```
             pub fn prefixes_iter(
@@ -836,11 +860,11 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
 
             /// Returns an unordered iterator over all IPv4 prefixes in the
             /// currently in the store, including meta-data.
-            /// 
+            ///
             /// The `guard` should be a `&epoch::pin()`. It allows the
             /// iterator to create and return references to the meta-data
             /// objects to the caller (instead of cloning them).
-            /// 
+            ///
             /// # Example
             /// ```
             /// use std::net::Ipv4Addr;
@@ -863,13 +887,13 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             ///
             /// let mut iter = store.prefixes_iter(&guard);
             ///
-            /// assert_eq!(iter.next().unwrap().prefix, 
+            /// assert_eq!(iter.next().unwrap().prefix,
             ///     Prefix::new(pfx_addr, 22).unwrap());
-            /// assert_eq!(iter.next().unwrap().prefix, 
+            /// assert_eq!(iter.next().unwrap().prefix,
             ///     Prefix::new(pfx_addr, 23).unwrap());
-            /// assert_eq!(iter.next().unwrap().prefix, 
+            /// assert_eq!(iter.next().unwrap().prefix,
             ///     Prefix::new(pfx_addr, 24).unwrap());
-            /// assert_eq!(iter.next().unwrap().prefix, 
+            /// assert_eq!(iter.next().unwrap().prefix,
             ///     Prefix::new(pfx_addr, 25).unwrap());
             /// ```
             pub fn prefixes_iter_v4(
@@ -882,11 +906,11 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
 
             /// Returns an unordered iterator over all IPv6 prefixes in the
             /// currently in the store, including meta-data.
-            /// 
+            ///
             /// The `guard` should be a `&epoch::pin()`. It allows the
             /// iterator to create and return references to the meta-data
             /// objects to the caller (instead of cloning them).
-            /// 
+            ///
             /// # Example
             /// ```
             /// use std::net::Ipv6Addr;
@@ -909,13 +933,13 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             ///
             /// let mut iter = store.prefixes_iter(&guard);
             ///
-            /// assert_eq!(iter.next().unwrap().prefix, 
+            /// assert_eq!(iter.next().unwrap().prefix,
             ///     Prefix::new(pfx_addr, 29).unwrap());
-            /// assert_eq!(iter.next().unwrap().prefix, 
+            /// assert_eq!(iter.next().unwrap().prefix,
             ///     Prefix::new(pfx_addr, 48).unwrap());
-            /// assert_eq!(iter.next().unwrap().prefix, 
+            /// assert_eq!(iter.next().unwrap().prefix,
             ///     Prefix::new(pfx_addr, 56).unwrap());
-            /// assert_eq!(iter.next().unwrap().prefix, 
+            /// assert_eq!(iter.next().unwrap().prefix,
             ///     Prefix::new(pfx_addr, 64).unwrap());
             /// ```
             pub fn prefixes_iter_v6(
@@ -927,7 +951,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             }
 
             /// Returns the number of all prefixes in the store.
-            /// 
+            ///
             /// Note that this method will actually traverse the complete
             /// tree.
             pub fn prefixes_len(&self) -> usize {
@@ -936,7 +960,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             }
 
             /// Returns the number of all IPv4 prefixes in the store.
-            /// 
+            ///
             /// Note that this method will actually traverse the complete
             /// tree.
             pub fn prefixes_v4_len(&self) -> usize {
@@ -944,7 +968,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             }
 
             /// Returns the number of all IPv6 prefixes in the store.
-            /// 
+            ///
             /// Note that this method will actually traverse the complete
             /// tree.
             pub fn prefixes_v6_len(&self) -> usize {
@@ -952,7 +976,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             }
 
             /// Returns the number of nodes in the store.
-            /// 
+            ///
             /// Note that this method will actually traverse the complete
             /// tree.
             pub fn nodes_len(&self) -> usize {
@@ -961,7 +985,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             }
 
             /// Returns the number of IPv4 nodes in the store.
-            /// 
+            ///
             /// Note that this method will actually traverse the complete
             /// tree.
             pub fn nodes_v4_len(&self) -> usize {
@@ -969,7 +993,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             }
 
             /// Returns the number of IPv6 nodes in the store.
-            /// 
+            ///
             /// Note that this method will actually traverse the complete
             /// tree.
             pub fn nodes_v6_len(&self) -> usize {
