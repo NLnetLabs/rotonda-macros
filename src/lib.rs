@@ -427,7 +427,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// use rotonda_store::MultiThreadedStore;
             /// use routecore::record::NoMeta;
             ///
-            /// let tree_bitmap = Arc::new(MultiThreadedStore::<NoMeta>::new()?);
+            /// let tree_bitmap = Arc::new(MultiThreadedStore::<NoMeta>::new().unwrap());
             ///
             /// let _: Vec<_> = (0..16)
             ///      .map(|_| {
@@ -480,7 +480,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
         /// use rotonda_store::{addr::Prefix, PrefixAs, MatchOptions,
         ///     MatchType};
         ///
-        /// let store = MultiThreadedStore::<PrefixAs>::new()?;
+        /// let store = MultiThreadedStore::<PrefixAs>::new().unwrap();
         /// let guard = &epoch::pin();
         ///
         /// let pfx_addr = "185.49.140.0".parse::<Ipv4Addr>()
@@ -644,7 +644,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// use rotonda_store::{addr::Prefix, PrefixAs};
             ///
             ///
-            /// let store = MultiThreadedStore::<PrefixAs>::new()?;
+            /// let store = MultiThreadedStore::<PrefixAs>::new().unwrap();
             /// let guard = epoch::pin();
             ///
             /// let pfx_addr = "185.49.140.0".parse::<Ipv4Addr>()
@@ -725,7 +725,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// use rotonda_store::{addr::Prefix, PrefixAs};
             ///
             ///
-            /// let store = MultiThreadedStore::<PrefixAs>::new()?;
+            /// let store = MultiThreadedStore::<PrefixAs>::new().unwrap();
             /// let guard = epoch::pin();
             ///
             /// let pfx_addr = "185.49.140.0".parse::<Ipv4Addr>()
@@ -822,7 +822,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// use rotonda_store::{MultiThreadedStore, epoch};
             /// use rotonda_store::{addr::Prefix, PrefixAs};
             ///
-            /// let store = MultiThreadedStore::<PrefixAs>::new()?;
+            /// let store = MultiThreadedStore::<PrefixAs>::new().unwrap();
             /// let guard = epoch::pin();
             ///
             /// let pfx_addr = "185.49.140.0".parse::<Ipv4Addr>()
@@ -872,7 +872,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// use rotonda_store::{MultiThreadedStore, epoch};
             /// use rotonda_store::{addr::Prefix, PrefixAs};
             ///
-            /// let store = MultiThreadedStore::<PrefixAs>::new()?;
+            /// let store = MultiThreadedStore::<PrefixAs>::new().unwrap();
             /// let guard = epoch::pin();
             ///
             /// let pfx_addr = "185.49.140.0".parse::<Ipv4Addr>()
@@ -918,7 +918,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// use rotonda_store::{MultiThreadedStore, epoch};
             /// use rotonda_store::{addr::Prefix, PrefixAs};
             ///
-            /// let store = MultiThreadedStore::<PrefixAs>::new()?;
+            /// let store = MultiThreadedStore::<PrefixAs>::new().unwrap();
             /// let guard = epoch::pin();
             ///
             /// let pfx_addr = "2a04:b900::".parse::<Ipv6Addr>()
