@@ -329,8 +329,8 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
 /// ```
 /// use rotonda_store::prelude::*;
 ///
-/// const IP4_STRIDE_ARRAY = [...];
-/// const IP6_STRIDE_ARRAY = [...];
+/// const IP4_STRIDE_ARRAY = [4; 8];
+/// const IP6_STRIDE_ARRAY = [4; 32];
 ///
 /// #[create_store((IPV4_STRIDE_ARRAY, IPV6_STRIDE_ARRAY))]
 /// struct NuStorage;
@@ -357,7 +357,7 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
 /// ))]
 /// struct NuStore;
 ///
-/// let store = Arc::new(NuStore::<NoMeta>::new());
+/// let store = Arc::new(NuStore::<PrefixAs>::new().unwrap());
 /// ```
 #[proc_macro_attribute]
 pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
@@ -496,6 +496,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
         ///     &Prefix::new(pfx_addr, 24).unwrap(),
         ///     &MatchOptions {
         ///         match_type: MatchType::LongestMatch,
+        ///         include_all_records: false,
         ///         include_less_specifics: false,
         ///         include_more_specifics: false
         ///     },
@@ -508,6 +509,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
         ///     &Prefix::new(pfx_addr, 24).unwrap(),
         ///         &MatchOptions {
         ///             match_type: MatchType::ExactMatch,
+        ///             include_all_records: false,
         ///             include_less_specifics: false,
         ///             include_more_specifics: false
         ///         },
