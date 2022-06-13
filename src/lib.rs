@@ -679,8 +679,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                                         ),
                                         guard
                                     )
-                                    .map(|p| p.iter_latest_unique_pub_records(guard))
-                                    .flatten()
+                                    .map(|p| routecore::bgp::PrefixRecord::from(p))
                                 ),
                                 None
                             )
@@ -695,8 +694,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                                         ),
                                         guard
                                     )
-                                    .map(|p| p.iter_latest_unique_pub_records(guard))
-                                    .flatten()
+                                    .map(|p| routecore::bgp::PrefixRecord::from(p))
                                 )
                             )
                         }
@@ -759,9 +757,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                                         search_pfx.len(),
                                     ),
                                     guard
-                                )
-                                .map(|p| p.iter_latest_unique_pub_records(guard))
-                                .flatten()
+                                ).map(|p| routecore::bgp::PrefixRecord::from(p))
                             ),
                             None
                         )
@@ -775,9 +771,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                                         search_pfx.len(),
                                     ),
                                     guard
-                                )
-                                .map(|p| p.iter_latest_unique_pub_records(guard))
-                                .flatten()
+                                ).map(|p| routecore::bgp::PrefixRecord::from(p))
                             )
                         )
                     }
