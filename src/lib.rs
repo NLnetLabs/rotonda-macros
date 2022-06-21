@@ -503,7 +503,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
         ///     guard
         /// );
         ///
-        /// assert_eq!(res.prefix_meta.unwrap()[0].0, 211321);
+        /// assert_eq!(res.prefix_meta.unwrap().0, 211321);
         ///
         /// let res = store.match_prefix(
         ///     &Prefix::new(pfx_addr, 24).unwrap(),
