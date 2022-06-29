@@ -6,9 +6,7 @@ description = "Procedural macros for the rotonda-store prefix store"
 homepage = "https://nlnetlabs.nl/projects/routing/rotonda/"
 keywords = ["routing", "bgp"]
 license = "BSD-3-Clause"
-version = "0.1.1"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+version = "0.2.0"
 
 [lib]
 proc-macro = true
