@@ -783,7 +783,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 &self,
                 prefix: &Prefix,
                 meta: Meta,
-            ) -> Result<(), std::boxed::Box<dyn std::error::Error>> {
+            ) -> Result<u32, PrefixStoreError> {
                 match prefix.addr() {
                     std::net::IpAddr::V4(addr) => {
                         self.v4.insert(PrefixRecord::new_with_local_meta(
