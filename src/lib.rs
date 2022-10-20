@@ -463,65 +463,105 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             }
         }
 
-        /// Search for and return one or more prefixes that match the given
-        /// `search_pfx` argument.
-        ///
-        /// The search will return a [QueryResult] with the matching prefix,
-        /// if any, the type of match for the found prefix and the more and
-        /// less specifics for the found prefix. The inclusion of more- or
-        /// less-specifics and the requested `match_type` is configurable
-        /// through the [MatchOptions] argument.
-        ///
-        /// # Example
-        /// ```
-        /// use std::net::Ipv4Addr;
-        ///
-        /// use rotonda_store::{MultiThreadedStore, epoch};
-        /// use rotonda_store::{addr::Prefix, PrefixAs, MatchOptions,
-        ///     MatchType};
-        ///
-        /// let store = MultiThreadedStore::<PrefixAs>::new().unwrap();
-        /// let guard = &epoch::pin();
-        ///
-        /// let pfx_addr = "185.49.140.0".parse::<Ipv4Addr>()
-        ///         .unwrap()
-        ///         .into();
-        ///
-        /// store.insert(
-        ///     &Prefix::new(pfx_addr, 22).unwrap(),
-        ///     PrefixAs(211321)
-        /// );
-        ///
-        /// let res = store.match_prefix(
-        ///     &Prefix::new(pfx_addr, 24).unwrap(),
-        ///     &MatchOptions {
-        ///         match_type: MatchType::LongestMatch,
-        ///         include_all_records: false,
-        ///         include_less_specifics: false,
-        ///         include_more_specifics: false
-        ///     },
-        ///     guard
-        /// );
-        ///
-        /// assert_eq!(res.prefix_meta.unwrap().0, 211321);
-        ///
-        /// let res = store.match_prefix(
-        ///     &Prefix::new(pfx_addr, 24).unwrap(),
-        ///         &MatchOptions {
-        ///             match_type: MatchType::ExactMatch,
-        ///             include_all_records: false,
-        ///             include_less_specifics: false,
-        ///             include_more_specifics: false
-        ///         },
-        ///         guard
-        ///     );
-        ///
-        /// assert!(res.match_type.is_empty());
-        ///
-        /// ```
         impl<'a, Meta: routecore::record::Meta + MergeUpdate,
             > #store_name<Meta>
         {
+            /// Search for and return one or more prefixes that match the given
+            /// `search_pfx` argument.
+            ///
+            /// The search will return a [QueryResult] with the matching prefix,
+            /// if any, the type of match for the found prefix and the more and
+            /// less specifics for the requested prefix. The inclusion of more-
+            /// or less-specifics and the requested `match_type` is configurable
+            /// through the [MatchOptions] argument.
+            /// 
+            /// The `match_type` in the `MatchOptions` indicates what match 
+            /// types can appear in the [QueryResult] result. 
+            /// 
+            /// `ExactMatch` is the most strict, and will only allow exactly
+            /// matching prefixes in the result. Failing an exacly matching 
+            /// prefix, it will return an `EmptyMatch`.
+            /// 
+            /// `LongestMatch` is less strict, and either an exactly matching
+            /// prefix or - in case there is no exact match - a longest matching
+            /// prefix will be allowed in the result. Failing both an EmptyMatch
+            /// will be returned.
+            /// 
+            /// For both `ExactMatch` and `LongestMatch` the 
+            /// `include_less_specifics` and `include_more_specifics` options
+            /// will be respected and the result will contain the more and less
+            /// specifics according to the options for the requested prefix, 
+            /// even if the result returns a `match_type` of `EmptyMatch`.
+            /// 
+            /// `EmptyMatch` is the least strict, and will *always* return the
+            /// requested prefix, be it exactly matching, longest matching or not
+            /// matching at all (empty match), again, together with its less|more
+            /// specifics (if requested). Note that the last option, the empty
+            /// match in the result will never return less-specifics, but can
+            /// return more-specifics for a prefix that itself is not present
+            /// in the store.
+            /// 
+            /// 
+            /// This table sums it up:
+            /// 
+            /// | query match_type | possible result types                      | less-specifics? | more-specifics? |
+            /// | ---------------- | ------------------------------------------ | --------------- | --------------- |
+            /// | `ExactMatch`     | `ExactMatch`, `EmptyMatch`                 | maybe           | maybe           |
+            /// | `LongestMatch`   | `ExactMatch`, `LongestMatch`, `EmptyMatch` | maybe           | maybe           |
+            /// | `EmptyMatch`     | `ExactMatch`, `LongestMatch`, `EmptyMatch` | no for EmptyM res, maybe for others | yes for EmptyM for res, maybe for others |
+            ///
+            /// 
+            /// Note that the behavior of the CLI command `show route exact` on 
+            /// most router platforms can be modeled by setting the `match_type`
+            /// to `ExactMatch` and `include_less_specifics` to `true`.
+            /// 
+            /// # Example
+            /// ```
+            /// use std::net::Ipv4Addr;
+            ///
+            /// use rotonda_store::{MultiThreadedStore, epoch};
+            /// use rotonda_store::{addr::Prefix, PrefixAs, MatchOptions,
+            ///     MatchType};
+            ///
+            /// let store = MultiThreadedStore::<PrefixAs>::new().unwrap();
+            /// let guard = &epoch::pin();
+            ///
+            /// let pfx_addr = "185.49.140.0".parse::<Ipv4Addr>()
+            ///         .unwrap()
+            ///         .into();
+            ///
+            /// store.insert(
+            ///     &Prefix::new(pfx_addr, 22).unwrap(),
+            ///     PrefixAs(211321)
+            /// );
+            ///
+            /// let res = store.match_prefix(
+            ///     &Prefix::new(pfx_addr, 24).unwrap(),
+            ///     &MatchOptions {
+            ///         match_type: MatchType::LongestMatch,
+            ///         include_all_records: false,
+            ///         include_less_specifics: false,
+            ///         include_more_specifics: false
+            ///     },
+            ///     guard
+            /// );
+            ///
+            /// assert_eq!(res.prefix_meta.unwrap().0, 211321);
+            ///
+            /// let res = store.match_prefix(
+            ///     &Prefix::new(pfx_addr, 24).unwrap(),
+            ///         &MatchOptions {
+            ///             match_type: MatchType::ExactMatch,
+            ///             include_all_records: false,
+            ///             include_less_specifics: false,
+            ///             include_more_specifics: false
+            ///         },
+            ///         guard
+            ///     );
+            ///
+            /// assert!(res.match_type.is_empty());
+            ///
+            /// ```
             pub fn match_prefix(
                 &'a self,
                 search_pfx: &Prefix,
