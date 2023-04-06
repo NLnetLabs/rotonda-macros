@@ -567,7 +567,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 search_pfx: &Prefix,
                 options: &MatchOptions,
                 guard: &'a Guard,
-            ) -> QueryResult<'a, Meta> {
+            ) -> QueryResult<Meta> {
 
                 match search_pfx.addr() {
                     std::net::IpAddr::V4(addr) => self.v4.match_prefix_by_store_direct(
@@ -606,7 +606,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             pub fn more_specifics_from(&'a self,
                 search_pfx: &Prefix,
                 guard: &'a Guard,
-            ) -> QueryResult<'a, Meta> {
+            ) -> QueryResult<Meta> {
 
                 match search_pfx.addr() {
                     std::net::IpAddr::V4(addr) => self.v4.more_specifics_from(
@@ -643,7 +643,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             pub fn less_specifics_from(&'a self,
                 search_pfx: &Prefix,
                 guard: &'a Guard,
-            ) -> QueryResult<'a, Meta> {
+            ) -> QueryResult<Meta> {
 
                 match search_pfx.addr() {
                     std::net::IpAddr::V4(addr) => self.v4.less_specifics_from(
@@ -708,7 +708,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             pub fn less_specifics_iter_from(&'a self,
                 search_pfx: &Prefix,
                 guard: &'a Guard,
-                ) -> impl Iterator<Item=routecore::bgp::PrefixRecord<Meta>> + 'a {
+                ) -> impl Iterator<Item=PrefixRecord<Meta>> + 'a {
                     let (left, right) = match search_pfx.addr() {
                         std::net::IpAddr::V4(addr) => {
                             (
@@ -719,7 +719,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                                         ),
                                         guard
                                     )
-                                    .map(|p| routecore::bgp::PrefixRecord::from(p))
+                                    .map(|p| PrefixRecord::from(p))
                                 ),
                                 None
                             )
@@ -734,7 +734,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                                         ),
                                         guard
                                     )
-                                    .map(|p| routecore::bgp::PrefixRecord::from(p))
+                                    .map(|p| PrefixRecord::from(p))
                                 )
                             )
                         }
@@ -787,7 +787,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             pub fn more_specifics_iter_from(&'a self,
                 search_pfx: &Prefix,
                 guard: &'a Guard,
-            ) -> impl Iterator<Item=PrefixRecord<'a, Meta>> + 'a {
+            ) -> impl Iterator<Item=PrefixRecord<Meta>> + 'a {
                 let (left, right) = match search_pfx.addr() {
                     std::net::IpAddr::V4(addr) => {
                         (
@@ -797,7 +797,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                                         search_pfx.len(),
                                     ),
                                     guard
-                                ).map(|p| routecore::bgp::PrefixRecord::from(p))
+                                ).map(|p| PrefixRecord::from(p))
                             ),
                             None
                         )
@@ -811,7 +811,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                                         search_pfx.len(),
                                     ),
                                     guard
-                                ).map(|p| routecore::bgp::PrefixRecord::from(p))
+                                ).map(|p| PrefixRecord::from(p))
                             )
                         )
                     }
@@ -826,13 +826,13 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             ) -> Result<u32, PrefixStoreError> {
                 match prefix.addr() {
                     std::net::IpAddr::V4(addr) => {
-                        self.v4.insert(PrefixRecord::new_with_local_meta(
+                        self.v4.insert(PrefixRecord::new(
                             *prefix,
                             meta,
                         ).into())
                     }
                     std::net::IpAddr::V6(addr) => {
-                        self.v6.insert(PrefixRecord::new_with_local_meta(
+                        self.v6.insert(PrefixRecord::new(
                             *prefix,
                             meta,
                         ).into())
@@ -885,12 +885,12 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             pub fn prefixes_iter(
                 &'a self,
                 guard: &'a Guard
-            ) -> impl Iterator<Item=routecore::bgp::PrefixRecord<Meta>> + 'a {
+            ) -> impl Iterator<Item=PrefixRecord<Meta>> + 'a {
                 self.v4.store.prefixes_iter(guard)
-                    .map(|p| routecore::bgp::PrefixRecord::from(p))
+                    .map(|p| PrefixRecord::from(p))
                     .chain(
                         self.v6.store.prefixes_iter(guard)
-                        .map(|p| routecore::bgp::PrefixRecord::from(p))
+                        .map(|p| PrefixRecord::from(p))
                     )
             }
 
@@ -935,9 +935,9 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             pub fn prefixes_iter_v4(
                 &'a self,
                 guard: &'a Guard
-            ) -> impl Iterator<Item=routecore::bgp::PrefixRecord<Meta>> + 'a {
+            ) -> impl Iterator<Item=PrefixRecord<Meta>> + 'a {
                 self.v4.store.prefixes_iter(guard)
-                    .map(|p| routecore::bgp::PrefixRecord::from(p))
+                    .map(|p| PrefixRecord::from(p))
             }
 
             /// Returns an unordered iterator over all IPv6 prefixes in the
@@ -981,9 +981,9 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             pub fn prefixes_iter_v6(
                 &'a self,
                 guard: &'a Guard
-            ) -> impl Iterator<Item=routecore::bgp::PrefixRecord<Meta>> + 'a {
+            ) -> impl Iterator<Item=PrefixRecord<Meta>> + 'a {
                 self.v6.store.prefixes_iter(guard)
-                    .map(|p| routecore::bgp::PrefixRecord::from(p))
+                    .map(|p| PrefixRecord::from(p))
             }
 
             /// Returns the number of all prefixes in the store.
