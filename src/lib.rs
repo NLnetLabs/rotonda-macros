@@ -823,19 +823,19 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 &self,
                 prefix: &Prefix,
                 meta: Meta,
-            ) -> Result<u32, PrefixStoreError> {
+            ) -> Result<(Upsert, u32), PrefixStoreError> {
                 match prefix.addr() {
                     std::net::IpAddr::V4(addr) => {
-                        self.v4.insert(PrefixRecord::new(
-                            *prefix,
-                            meta,
-                        ).into())
+                        self.v4.insert(
+                            PrefixId::<IPv4>::from(*prefix),
+                            meta
+                        )
                     }
                     std::net::IpAddr::V6(addr) => {
-                        self.v6.insert(PrefixRecord::new(
-                            *prefix,
+                        self.v6.insert(
+                            PrefixId::<IPv6>::from(*prefix),
                             meta,
-                        ).into())
+                        )
                     }
                 }
             }
