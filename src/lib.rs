@@ -990,50 +990,75 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             ///
             /// Note that this method will actually traverse the complete
             /// tree.
-            pub fn prefixes_len(&self) -> usize {
-                self.v4.store.get_prefixes_len()
-                + self.v6.store.get_prefixes_len()
+            pub fn prefixes_count(&self) -> usize {
+                self.v4.store.get_prefixes_count()
+                + self.v6.store.get_prefixes_count()
             }
 
             /// Returns the number of all IPv4 prefixes in the store.
             ///
-            /// Note that this method will actually traverse the complete
-            /// tree.
-            pub fn prefixes_v4_len(&self) -> usize {
-                self.v4.store.get_prefixes_len()
+            /// Note that this counter may be lower than the actual
+            /// number in the store, due to contention at the time of
+            /// reading the value.
+            pub fn prefixes_v4_count(&self) -> usize {
+                self.v4.store.get_prefixes_count()
+            }
+
+            /// Returns the number of all IPv4 prefixes with the
+            /// supplied prefix length in the store.
+            /// 
+            /// Note that this counter may be lower than the actual
+            /// number in the store, due to contention at the time of
+            /// reading the value.
+            pub fn prefixes_v4_count_for_len(&self, len: u8) -> usize {
+                self.v4.store.get_prefixes_count_for_len(len)
             }
 
             /// Returns the number of all IPv6 prefixes in the store.
             ///
-            /// Note that this method will actually traverse the complete
-            /// tree.
-            pub fn prefixes_v6_len(&self) -> usize {
-                self.v6.store.get_prefixes_len()
+            /// Note that this counter may be lower than the actual
+            /// number in the store, due to contention at the time of
+            /// reading the value.
+            pub fn prefixes_v6_count(&self) -> usize {
+                self.v6.store.get_prefixes_count()
+            }
+
+            /// Returns the number of all IPv6 prefixes with the
+            /// supplied prefix length in the store.
+            /// 
+            /// Note that this counter may be lower than the actual
+            /// number in the store, due to contention at the time of
+            /// reading the value.
+            pub fn prefixes_v6_count_for_len(&self, len: u8) -> usize {
+                self.v6.store.get_prefixes_count_for_len(len)
             }
 
             /// Returns the number of nodes in the store.
             ///
-            /// Note that this method will actually traverse the complete
-            /// tree.
-            pub fn nodes_len(&self) -> usize {
-                self.v4.store.get_nodes_len()
-                + self.v6.store.get_nodes_len()
+            /// Note that this counter may be lower than the actual
+            /// number in the store, due to contention at the time of
+            /// reading the value.
+            pub fn nodes_count(&self) -> usize {
+                self.v4.store.get_nodes_count()
+                + self.v6.store.get_nodes_count()
             }
 
             /// Returns the number of IPv4 nodes in the store.
             ///
-            /// Note that this method will actually traverse the complete
-            /// tree.
-            pub fn nodes_v4_len(&self) -> usize {
-                self.v4.store.get_nodes_len()
+            /// Note that this counter may be lower than the actual
+            /// number in the store, due to contention at the time of
+            /// reading the value.
+            pub fn nodes_v4_count(&self) -> usize {
+                self.v4.store.get_nodes_count()
             }
 
             /// Returns the number of IPv6 nodes in the store.
             ///
-            /// Note that this method will actually traverse the complete
-            /// tree.
-            pub fn nodes_v6_len(&self) -> usize {
-                self.v6.store.get_nodes_len()
+            /// Note that this counter may be lower than the actual
+            /// number in the store, due to contention at the time of
+            /// reading the value.
+            pub fn nodes_v6_count(&self) -> usize {
+                self.v6.store.get_nodes_count()
             }
 
             /// Print the store statistics to the standard output.
@@ -1044,10 +1069,10 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             }
 
             // The Store statistics.
-            pub fn stats(&self) -> Stats {
-                Stats {
-                    v4: &self.v4.stats,
-                    v6: &self.v6.stats,
+            pub fn stats(&self) -> StoreStats {
+                StoreStats {
+                    v4: self.v4.store.counters.get_prefix_stats(),
+                    v6: self.v6.store.counters.get_prefix_stats(),
                 }
             }
         }
