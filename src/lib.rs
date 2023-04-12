@@ -1064,7 +1064,10 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// Print the store statistics to the standard output.
             #[cfg(feature = "cli")]
             pub fn print_funky_stats(&self) {
+                println!("");
+                println!("Stats for IPv4 multi-threaded store\n");
                 println!("{}", self.v4);
+                println!("Stats for IPv6 multi-threaded store\n");
                 println!("{}", self.v6);
             }
 
