@@ -182,7 +182,7 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
         }
 
         #[derive(Debug)]
-        pub(crate) struct #prefixes_buckets_name<AF: AddressFamily, M: routecore::record::Meta> {
+        pub(crate) struct #prefixes_buckets_name<AF: AddressFamily, M: Meta> {
             // creates a bucket for each prefix (PrefixId) length, with
             // hard-coded field-names, like this:
             // p0: PrefixSet<AF, M>,
@@ -304,7 +304,7 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
     };
 
     let type_alias = quote! {
-        type #type_name<Meta> = TreeBitMap<#ip_af, Meta, #buckets_name<#ip_af>, #prefixes_buckets_name<#ip_af, Meta>>;
+        type #type_name<M> = TreeBitMap<#ip_af, M, #buckets_name<#ip_af>, #prefixes_buckets_name<#ip_af, M>>;
     };
 
     let result = quote! {
@@ -328,6 +328,8 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
 /// # Usage
 /// ```
 /// use rotonda_store::prelude::*;
+/// use rotonda_store::prelude::multi::*;
+/// use rotonda_store::meta_examples::PrefixAs;
 ///
 /// const IP4_STRIDE_ARRAY = [4; 8];
 /// const IP6_STRIDE_ARRAY = [4; 32];
@@ -348,6 +350,8 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
 /// # Example
 /// ```
 /// use rotonda_store::prelude::*;
+/// use rotonda_store::prelude::multi::*;
+/// use rotonda_store::meta_examples::PrefixAs;
 ///
 /// // The default stride sizes for IPv4, IPv6, resp.
 /// #[create_store((
@@ -373,7 +377,6 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let create_strides = quote! {
         use ::std::marker::PhantomData;
-        use ::routecore::record::{MergeUpdate, NoMeta};
         use ::routecore::addr::Prefix;
 
         #[stride_sizes((IPv4, #strides4))]
@@ -387,15 +390,15 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
         /// A concurrently read/writable, lock-free Prefix Store, for use in a
         /// multi-threaded context.
         pub struct #store_name<
-            Meta: routecore::record::Meta + MergeUpdate,
+            M: Meta + MergeUpdate,
         > {
-            v4: #strides4_name<Meta>,
-            v6: #strides6_name<Meta>,
+            v4: #strides4_name<M>,
+            v6: #strides6_name<M>,
         }
 
         impl<
-                Meta: routecore::record::Meta + MergeUpdate,
-            > Default for #store_name<Meta>
+                M: Meta + MergeUpdate,
+            > Default for #store_name<M>
         {
             fn default() -> Self {
                 Self::new().expect("failed to create store")
@@ -403,8 +406,8 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
         }
 
         impl<
-                Meta: routecore::record::Meta + MergeUpdate,
-            > #store_name<Meta>
+                M: Meta + MergeUpdate,
+            > #store_name<M>
         {
             /// Creates a new empty store with a tree for IPv4 and on for IPv6.
             ///
@@ -424,8 +427,8 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// use std::net::Ipv4Addr;
             ///
             /// use rotonda_store::prelude::*;
-            /// use rotonda_store::MultiThreadedStore;
-            /// use routecore::record::NoMeta;
+            /// use rotonda_store::prelude::multi::*;
+            /// use rotonda_store::meta_examples::{NoMeta, PrefixAs};
             ///
             /// let tree_bitmap = Arc::new(MultiThreadedStore::<NoMeta>::new().unwrap());
             ///
@@ -463,8 +466,8 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             }
         }
 
-        impl<'a, Meta: routecore::record::Meta + MergeUpdate,
-            > #store_name<Meta>
+        impl<'a, M: Meta + MergeUpdate,
+            > #store_name<M>
         {
             /// Search for and return one or more prefixes that match the given
             /// `search_pfx` argument.
@@ -519,9 +522,9 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// ```
             /// use std::net::Ipv4Addr;
             ///
-            /// use rotonda_store::{MultiThreadedStore, epoch};
-            /// use rotonda_store::{addr::Prefix, PrefixAs, MatchOptions,
-            ///     MatchType};
+            /// use rotonda_store::prelude::*;
+            /// use rotonda_store::meta_examples::PrefixAs;
+            /// use rotonda_store::prelude::multi::*;
             ///
             /// let store = MultiThreadedStore::<PrefixAs>::new().unwrap();
             /// let guard = &epoch::pin();
@@ -567,7 +570,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 search_pfx: &Prefix,
                 options: &MatchOptions,
                 guard: &'a Guard,
-            ) -> QueryResult<Meta> {
+            ) -> QueryResult<M> {
 
                 match search_pfx.addr() {
                     std::net::IpAddr::V4(addr) => self.v4.match_prefix_by_store_direct(
@@ -606,7 +609,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             pub fn more_specifics_from(&'a self,
                 search_pfx: &Prefix,
                 guard: &'a Guard,
-            ) -> QueryResult<Meta> {
+            ) -> QueryResult<M> {
 
                 match search_pfx.addr() {
                     std::net::IpAddr::V4(addr) => self.v4.more_specifics_from(
@@ -643,7 +646,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             pub fn less_specifics_from(&'a self,
                 search_pfx: &Prefix,
                 guard: &'a Guard,
-            ) -> QueryResult<Meta> {
+            ) -> QueryResult<M> {
 
                 match search_pfx.addr() {
                     std::net::IpAddr::V4(addr) => self.v4.less_specifics_from(
@@ -682,8 +685,9 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// ```
             /// use std::net::Ipv4Addr;
             ///
-            /// use rotonda_store::{MultiThreadedStore, epoch};
-            /// use rotonda_store::{addr::Prefix, PrefixAs};
+            /// use rotonda_store::prelude::*;
+            /// use rotonda_store::meta_examples::PrefixAs;
+            /// use rotonda_store::prelude::multi::*;
             ///
             ///
             /// let store = MultiThreadedStore::<PrefixAs>::new().unwrap();
@@ -708,7 +712,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             pub fn less_specifics_iter_from(&'a self,
                 search_pfx: &Prefix,
                 guard: &'a Guard,
-                ) -> impl Iterator<Item=PrefixRecord<Meta>> + 'a {
+                ) -> impl Iterator<Item=PrefixRecord<M>> + 'a {
                     let (left, right) = match search_pfx.addr() {
                         std::net::IpAddr::V4(addr) => {
                             (
@@ -761,9 +765,9 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// ```
             /// use std::net::Ipv4Addr;
             ///
-            /// use rotonda_store::{MultiThreadedStore, epoch};
-            /// use rotonda_store::{addr::Prefix, PrefixAs};
-            ///
+            /// use rotonda_store::prelude::*;
+            /// use rotonda_store::prelude::multi::*;            
+            /// use rotonda_store::meta_examples::PrefixAs;
             ///
             /// let store = MultiThreadedStore::<PrefixAs>::new().unwrap();
             /// let guard = epoch::pin();
@@ -787,7 +791,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             pub fn more_specifics_iter_from(&'a self,
                 search_pfx: &Prefix,
                 guard: &'a Guard,
-            ) -> impl Iterator<Item=PrefixRecord<Meta>> + 'a {
+            ) -> impl Iterator<Item=PrefixRecord<M>> + 'a {
                 let (left, right) = match search_pfx.addr() {
                     std::net::IpAddr::V4(addr) => {
                         (
@@ -822,7 +826,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             pub fn insert(
                 &self,
                 prefix: &Prefix,
-                meta: Meta,
+                meta: M,
             ) -> Result<(Upsert, u32), PrefixStoreError> {
                 match prefix.addr() {
                     std::net::IpAddr::V4(addr) => {
@@ -855,8 +859,9 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// ```
             /// use std::net::Ipv4Addr;
             ///
-            /// use rotonda_store::{MultiThreadedStore, epoch};
-            /// use rotonda_store::{addr::Prefix, PrefixAs};
+            /// use rotonda_store::prelude::*;
+            /// use rotonda_store::prelude::multi::*;
+            /// use rotonda_store::meta_examples::PrefixAs;
             ///
             /// let store = MultiThreadedStore::<PrefixAs>::new().unwrap();
             /// let guard = epoch::pin();
@@ -885,7 +890,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             pub fn prefixes_iter(
                 &'a self,
                 guard: &'a Guard
-            ) -> impl Iterator<Item=PrefixRecord<Meta>> + 'a {
+            ) -> impl Iterator<Item=PrefixRecord<M>> + 'a {
                 self.v4.store.prefixes_iter(guard)
                     .map(|p| PrefixRecord::from(p))
                     .chain(
@@ -905,8 +910,9 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// ```
             /// use std::net::Ipv4Addr;
             ///
-            /// use rotonda_store::{MultiThreadedStore, epoch};
-            /// use rotonda_store::{addr::Prefix, PrefixAs};
+            /// use rotonda_store::prelude::*;
+            /// use rotonda_store::prelude::multi::*;
+            /// use rotonda_store::meta_examples::PrefixAs;
             ///
             /// let store = MultiThreadedStore::<PrefixAs>::new().unwrap();
             /// let guard = epoch::pin();
@@ -935,7 +941,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             pub fn prefixes_iter_v4(
                 &'a self,
                 guard: &'a Guard
-            ) -> impl Iterator<Item=PrefixRecord<Meta>> + 'a {
+            ) -> impl Iterator<Item=PrefixRecord<M>> + 'a {
                 self.v4.store.prefixes_iter(guard)
                     .map(|p| PrefixRecord::from(p))
             }
@@ -951,8 +957,9 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// ```
             /// use std::net::Ipv6Addr;
             ///
-            /// use rotonda_store::{MultiThreadedStore, epoch};
-            /// use rotonda_store::{addr::Prefix, PrefixAs};
+            /// use rotonda_store::prelude::*;
+            /// use rotonda_store::prelude::multi::*;
+            /// use rotonda_store::meta_examples::PrefixAs;
             ///
             /// let store = MultiThreadedStore::<PrefixAs>::new().unwrap();
             /// let guard = epoch::pin();
@@ -981,7 +988,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             pub fn prefixes_iter_v6(
                 &'a self,
                 guard: &'a Guard
-            ) -> impl Iterator<Item=PrefixRecord<Meta>> + 'a {
+            ) -> impl Iterator<Item=PrefixRecord<M>> + 'a {
                 self.v6.store.prefixes_iter(guard)
                     .map(|p| PrefixRecord::from(p))
             }
