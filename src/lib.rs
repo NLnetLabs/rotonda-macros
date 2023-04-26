@@ -44,7 +44,7 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
         prefixes_buckets_name = format_ident!("PrefixBuckets4");
         // prefix_store_bits = format_ident!("prefix_store_bits_4");
         get_root_prefix_set = quote! {
-            fn get_root_prefix_set(&self, len: u8) -> &'_ BetterPrefixSet<IPv4, M> {
+            fn get_root_prefix_set(&self, len: u8) -> &'_ PrefixSet<IPv4, M> {
                 [
                     &self.p0, &self.p1, &self.p2, &self.p3, &self.p4, &self.p5, &self.p6, &self.p7, &self.p8,
                     &self.p9, &self.p10, &self.p11, &self.p12, &self.p13, &self.p14, &self.p15, &self.p16,
@@ -63,7 +63,7 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
         prefixes_buckets_name = format_ident!("PrefixBuckets6");
         // prefix_store_bits = format_ident!("prefix_store_bits_6");
         get_root_prefix_set = quote! {
-            fn get_root_prefix_set(&self, len: u8) -> &'_ BetterPrefixSet<IPv6, M> {
+            fn get_root_prefix_set(&self, len: u8) -> &'_ PrefixSet<IPv6, M> {
                 [
                     &self.p0, &self.p1, &self.p2, &self.p3, &self.p4, &self.p5, &self.p6, &self.p7, &self.p8,
                     &self.p9, &self.p10, &self.p11, &self.p12, &self.p13, &self.p14, &self.p15, &self.p16,
@@ -189,7 +189,7 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
             // p1: PrefixSet<AF, M>,
             // ...
             // p32: PrefixSet<AF, M>,
-            #( #prefixes_all_len: BetterPrefixSet<#ip_af, M>, )*
+            #( #prefixes_all_len: PrefixSet<#ip_af, M>, )*
             _af: PhantomData<AF>,
             _m: PhantomData<M>,
         }
@@ -207,7 +207,7 @@ pub fn stride_sizes(attr: TokenStream, input: TokenStream) -> TokenStream {
         impl<AF: AddressFamily, M: Meta> PrefixBuckets<#ip_af, M> for #prefixes_buckets_name<AF, M> {
             fn init() -> #prefixes_buckets_name<AF, M> {
                 #prefixes_buckets_name {
-                    #( #prefixes_all_len: BetterPrefixSet::init(1 << #prefixes_buckets_name::<AF, M>::get_bits_for_len(#all_len, 0)), )*
+                    #( #prefixes_all_len: PrefixSet::init(1 << #prefixes_buckets_name::<AF, M>::get_bits_for_len(#all_len, 0)), )*
                     _af: PhantomData,
                     _m: PhantomData,
                 }
