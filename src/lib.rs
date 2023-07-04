@@ -827,7 +827,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 &self,
                 prefix: &Prefix,
                 meta: M,
-            ) -> Result<(Upsert<<M as crate::prefix_record::MergeUpdate>::UserData>, u32), PrefixStoreError> {
+            ) -> Result<(Upsert<<M as MergeUpdate>::UserData>, u32), PrefixStoreError> {
                 match prefix.addr() {
                     std::net::IpAddr::V4(addr) => {
                         self.v4.insert(
