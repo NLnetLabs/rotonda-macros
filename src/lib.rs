@@ -535,7 +535,8 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             ///
             /// store.insert(
             ///     &Prefix::new(pfx_addr, 22).unwrap(),
-            ///     PrefixAs(211321)
+            ///     PrefixAs(211321),
+            ///     ()
             /// );
             ///
             /// let res = store.match_prefix(
@@ -699,7 +700,8 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             ///
             /// store.insert(
             ///     &Prefix::new(pfx_addr, 22).unwrap(),
-            ///     PrefixAs(211321)
+            ///     PrefixAs(211321),
+            ///     ()
             /// );
             ///
             /// for prefix_record in store.less_specifics_iter_from(
@@ -778,7 +780,8 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             ///
             /// store.insert(
             ///     &Prefix::new(pfx_addr, 24).unwrap(),
-            ///     PrefixAs(211321)
+            ///     PrefixAs(211321),
+            ///     ()
             /// );
             ///
             /// for prefix_record in store.more_specifics_iter_from(
@@ -874,10 +877,10 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             ///         .into();
             /// let our_asn = PrefixAs(211321);
             ///
-            /// store.insert(&Prefix::new(pfx_addr, 22, ()).unwrap(), our_asn);
-            /// store.insert(&Prefix::new(pfx_addr, 23, ()).unwrap(), our_asn);
-            /// store.insert(&Prefix::new(pfx_addr, 24, ()).unwrap(), our_asn);
-            /// store.insert(&Prefix::new(pfx_addr, 25, ()).unwrap(), our_asn);
+            /// store.insert(&Prefix::new(pfx_addr, 22).unwrap(), our_asn, ());
+            /// store.insert(&Prefix::new(pfx_addr, 23).unwrap(), our_asn, ());
+            /// store.insert(&Prefix::new(pfx_addr, 24).unwrap(), our_asn, ());
+            /// store.insert(&Prefix::new(pfx_addr, 25).unwrap(), our_asn, ());
             ///
             /// let mut iter = store.prefixes_iter(&guard);
             ///
