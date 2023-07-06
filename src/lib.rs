@@ -500,6 +500,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             ///     Verbose,
             /// }
             ///
+            /// #[derive(Debug)]
             /// struct LoggableMeta;
             /// 
             /// impl std::fmt::Display for LoggableMeta {
