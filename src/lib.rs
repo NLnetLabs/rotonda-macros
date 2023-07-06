@@ -516,7 +516,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             ///
             ///     fn merge_update(
             ///         &mut self,
-            ///         _: NoMeta,
+            ///         _: Self,
             ///         _: Option<&Self::UserDataIn>,
             ///     ) -> Result<(), Box<dyn std::error::Error>> {
             ///         Ok(())
@@ -524,10 +524,10 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             ///
             ///     fn clone_merge_update(
             ///         &self,
-            ///         _: &NoMeta,
+            ///         _: &Self,
             ///         _: Option<&Self::UserDataIn>,
             ///     ) -> Result<(Self, Self::UserDataOut), Box<dyn std::error::Error>> {
-            ///         Ok((NoMeta::Empty, ()))
+            ///         Ok((Self, ()))
             ///     }
             /// }
             ///
