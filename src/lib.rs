@@ -494,6 +494,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// use rotonda_store::prelude::*;
             /// use rotonda_store::prelude::multi::*;
             ///
+            /// #[derive(Debug)]
             /// enum LogMode {
             ///     None,
             ///     Summary,
