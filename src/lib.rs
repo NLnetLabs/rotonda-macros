@@ -454,7 +454,6 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             ///                  tree_bitmap.insert(
             ///                      &pfx.unwrap(),
             ///                      NoMeta::Empty,
-            ///                      ()
             ///                  ).unwrap();
             ///              }
             ///          })
@@ -502,8 +501,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             ///     FULL_DUMP,
             /// }
             ///
-            /// let tree_bitmap = Arc::new(MultiThreadedStore::<NoMeta>::new()
-            ///     .unwrap()
+            /// let tree_bitmap = MultiThreadedStore::<NoMeta>::new().unwrap()
             ///     .with_user_data(LogMode::SILENT);
             /// ```
             pub fn with_user_data(self, user_data: <M as MergeUpdate>::UserDataIn) -> Self {
