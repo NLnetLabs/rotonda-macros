@@ -1020,10 +1020,10 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             ///         .into();
             /// let our_asn = PrefixAs(211321);
             ///
-            /// store.insert(&Prefix::new(pfx_addr, 29).unwrap(), our_asn, ());
-            /// store.insert(&Prefix::new(pfx_addr, 48).unwrap(), our_asn, ());
-            /// store.insert(&Prefix::new(pfx_addr, 56).unwrap(), our_asn, ());
-            /// store.insert(&Prefix::new(pfx_addr, 64).unwrap(), our_asn, ());
+            /// store.insert(&Prefix::new(pfx_addr, 29).unwrap(), our_asn);
+            /// store.insert(&Prefix::new(pfx_addr, 48).unwrap(), our_asn);
+            /// store.insert(&Prefix::new(pfx_addr, 56).unwrap(), our_asn);
+            /// store.insert(&Prefix::new(pfx_addr, 64).unwrap(), our_asn);
             ///
             /// let mut iter = store.prefixes_iter(&guard);
             ///
