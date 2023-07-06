@@ -394,6 +394,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
         > {
             v4: #strides4_name<M>,
             v6: #strides6_name<M>,
+            user_data: Option<<M as MergeUpdate>::UserDataIn>,
         }
 
         impl<
@@ -463,7 +464,54 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 Ok(Self {
                     v4: #strides4_name::new()?,
                     v6: #strides6_name::new()?,
+                    user_data: None,
                 })
+            }
+        }
+
+        impl<
+                M: Meta + MergeUpdate,
+            > #store_name<M>
+        {
+            /// Provide data for use by your MergeUpdate impl.
+            ///
+            /// Use this to provide additional context to the MergeUpdate impl
+            /// functions beyond the store item being added and the current
+            /// state of the store item it is being added to.
+            ///
+            /// The meaning of the data that you provide is determined by you,
+            /// it has no meaning to the store.
+            ///
+            /// Possible use cases include passing to your MergeUpdate impl a
+            /// custom allocator, or logger, or configurable update policy
+            /// such as an eviction strategy to manage the size of the
+            /// metadata over many updates).
+            ///
+            /// # Example
+            /// ```
+            /// use std::{sync::Arc, thread};
+            /// use std::net::Ipv4Addr;
+            ///
+            /// use rotonda_store::prelude::*;
+            /// use rotonda_store::prelude::multi::*;
+            /// use rotonda_store::meta_examples::{NoMeta, PrefixAs};
+            ///
+            /// enum LogMode {
+            ///     SILENT,
+            ///     SUMMARY_STATISTICS,
+            ///     FULL_DUMP,
+            /// }
+            ///
+            /// let tree_bitmap = Arc::new(MultiThreadedStore::<NoMeta>::new()
+            ///     .unwrap()
+            ///     .with_user_data(LogMode::SILENT);
+            /// ```
+            pub fn with_user_data(self, user_data: <M as MergeUpdate>::UserDataIn) -> Self {
+                Self {
+                    v4: self.v4,
+                    v6: self.v6,
+                    user_data: Some(user_data),
+                }
             }
         }
 
@@ -831,21 +879,20 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 &self,
                 prefix: &Prefix,
                 meta: M,
-                user_data: <M as MergeUpdate>::UserDataIn,
             ) -> Result<(Upsert<<M as MergeUpdate>::UserDataOut>, u32), PrefixStoreError> {
                 match prefix.addr() {
                     std::net::IpAddr::V4(addr) => {
                         self.v4.insert(
                             PrefixId::<IPv4>::from(*prefix),
                             meta,
-                            user_data,
+                            self.user_data.as_ref(),
                         )
                     }
                     std::net::IpAddr::V6(addr) => {
                         self.v6.insert(
                             PrefixId::<IPv6>::from(*prefix),
                             meta,
-                            user_data,
+                            self.user_data.as_ref(),
                         )
                     }
                 }
