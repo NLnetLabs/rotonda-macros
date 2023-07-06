@@ -501,6 +501,12 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// }
             ///
             /// struct LoggableMeta;
+            /// 
+            /// impl std::fmt::Display for LoggableMeta {
+            ///     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            ///         f.write_str("LoggableMeta")
+            ///     }
+            /// }
             ///
             /// impl MergeUpdate for LoggableMeta {
             ///     type UserDataIn = LogMode;
