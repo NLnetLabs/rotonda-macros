@@ -493,16 +493,38 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             ///
             /// use rotonda_store::prelude::*;
             /// use rotonda_store::prelude::multi::*;
-            /// use rotonda_store::meta_examples::{NoMeta, PrefixAs};
             ///
             /// enum LogMode {
-            ///     SILENT,
-            ///     SUMMARY_STATISTICS,
-            ///     FULL_DUMP,
+            ///     None,
+            ///     Summary,
+            ///     Verbose,
             /// }
             ///
-            /// let tree_bitmap = MultiThreadedStore::<NoMeta>::new().unwrap()
-            ///     .with_user_data(LogMode::SILENT);
+            /// struct LoggableMeta;
+            ///
+            /// impl MergeUpdate for LoggableMeta {
+            ///     type UserDataIn = LogMode;
+            ///     type UserDataOut = ();
+            ///
+            ///     fn merge_update(
+            ///         &mut self,
+            ///         _: NoMeta,
+            ///         _: Option<&Self::UserDataIn>,
+            ///     ) -> Result<(), Box<dyn std::error::Error>> {
+            ///         Ok(())
+            ///     }
+            ///
+            ///     fn clone_merge_update(
+            ///         &self,
+            ///         _: &NoMeta,
+            ///         _: Option<&Self::UserDataIn>,
+            ///     ) -> Result<(Self, Self::UserDataOut), Box<dyn std::error::Error>> {
+            ///         Ok((NoMeta::Empty, ()))
+            ///     }
+            /// }
+            ///
+            /// let tree_bitmap = MultiThreadedStore::<LoggableMeta>::new().unwrap()
+            ///     .with_user_data(LogMode::None);
             /// ```
             pub fn with_user_data(self, user_data: <M as MergeUpdate>::UserDataIn) -> Self {
                 Self {
