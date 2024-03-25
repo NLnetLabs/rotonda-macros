@@ -377,7 +377,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let create_strides = quote! {
         use ::std::marker::PhantomData;
-        use ::routecore::addr::Prefix;
+        use ::inetnum::addr::Prefix;
 
         #[stride_sizes((IPv4, #strides4))]
         struct #strides4_name;
