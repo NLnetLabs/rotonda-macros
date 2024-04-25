@@ -900,23 +900,32 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 left.into_iter().flatten().chain(right.into_iter().flatten())
             }
 
+
+            // &self,
+            // pfx: PrefixId<AF>,
+            // multi_uniq_id: u32,
+            // ltime: u64,
+            // status: RouteStatus,
+            // meta: M,
+            // user_data:
+
             pub fn insert(
                 &self,
                 prefix: &Prefix,
-                meta: M,
-            ) -> Result<(Upsert<<M as MergeUpdate>::UserDataOut>, u32), PrefixStoreError> {
+                record: Record<M>,
+            ) -> Result<UpsertReport, PrefixStoreError> {
                 match prefix.addr() {
                     std::net::IpAddr::V4(addr) => {
                         self.v4.insert(
                             PrefixId::<IPv4>::from(*prefix),
-                            meta,
+                            record,
                             self.user_data.as_ref(),
                         )
                     }
                     std::net::IpAddr::V6(addr) => {
                         self.v6.insert(
                             PrefixId::<IPv6>::from(*prefix),
-                            meta,
+                            record,
                             self.user_data.as_ref(),
                         )
                     }
