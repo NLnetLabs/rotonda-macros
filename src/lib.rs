@@ -394,7 +394,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
         > {
             v4: #strides4_name<M>,
             v6: #strides6_name<M>,
-            user_data: Option<<M as MergeUpdate>::UserDataIn>,
+            // user_data: Option<<M as MergeUpdate>::UserDataIn>,
         }
 
         impl<
@@ -463,7 +463,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 Ok(Self {
                     v4: #strides4_name::new()?,
                     v6: #strides6_name::new()?,
-                    user_data: None,
+                    // user_data: None,
                 })
             }
         }
@@ -538,7 +538,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 Self {
                     v4: self.v4,
                     v6: self.v6,
-                    user_data: Some(user_data),
+                    // user_data: Some(user_data),
                 }
             }
         }
@@ -919,14 +919,14 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                         self.v4.insert(
                             PrefixId::<IPv4>::from(*prefix),
                             record,
-                            self.user_data.as_ref(),
+                            // self.user_data.as_ref(),
                         )
                     }
                     std::net::IpAddr::V6(addr) => {
                         self.v6.insert(
                             PrefixId::<IPv6>::from(*prefix),
                             record,
-                            self.user_data.as_ref(),
+                            // self.user_data.as_ref(),
                         )
                     }
                 }
