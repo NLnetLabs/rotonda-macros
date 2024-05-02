@@ -390,7 +390,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
         /// A concurrently read/writable, lock-free Prefix Store, for use in a
         /// multi-threaded context.
         pub struct #store_name<
-            M: Meta + MergeUpdate,
+            M: Meta
         > {
             v4: #strides4_name<M>,
             v6: #strides6_name<M>,
@@ -398,7 +398,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
         }
 
         impl<
-                M: Meta + MergeUpdate,
+                M: Meta
             > Default for #store_name<M>
         {
             fn default() -> Self {
@@ -407,7 +407,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
         }
 
         impl<
-                M: Meta + MergeUpdate,
+                M: Meta
             > #store_name<M>
         {
             /// Creates a new empty store with a tree for IPv4 and on for IPv6.
@@ -468,10 +468,10 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             }
         }
 
-        impl<
-                M: Meta + MergeUpdate,
-            > #store_name<M>
-        {
+        // impl<
+        //         M: Meta
+        //     > #store_name<M>
+        // {
             /// Provide data for use by your MergeUpdate impl.
             ///
             /// Use this to provide additional context to the MergeUpdate impl
@@ -534,16 +534,16 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// let tree_bitmap = MultiThreadedStore::<LoggableMeta>::new().unwrap()
             ///     .with_user_data(LogMode::None);
             /// ```
-            pub fn with_user_data(self, user_data: <M as MergeUpdate>::UserDataIn) -> Self {
-                Self {
-                    v4: self.v4,
-                    v6: self.v6,
-                    // user_data: Some(user_data),
-                }
-            }
-        }
+            // pub fn with_user_data(self, user_data: <M>::UserDataIn) -> Self {
+            //     Self {
+            //         v4: self.v4,
+            //         v6: self.v6,
+            //         // user_data: Some(user_data),
+            //     }
+            // }
+        // }
 
-        impl<'a, M: Meta + MergeUpdate,
+        impl<'a, M: Meta,
             > #store_name<M>
         {
             /// Search for and return one or more prefixes that match the given
@@ -650,20 +650,24 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             ) -> QueryResult<M> {
 
                 match search_pfx.addr() {
-                    std::net::IpAddr::V4(addr) => self.v4.match_prefix_by_store_direct(
-                        PrefixId::<IPv4>::new(
-                            addr.into(),
-                            search_pfx.len(),
-                        ),
-                        options,
-                        guard
-                    ),
+                    std::net::IpAddr::V4(addr) => {
+                        self.v4.match_prefix_by_store_direct(
+                            PrefixId::<IPv4>::new(
+                                addr.into(),
+                                search_pfx.len(),
+                            ),
+                            options,
+                            options.mui,
+                            guard
+                        )
+                    },
                     std::net::IpAddr::V6(addr) => self.v6.match_prefix_by_store_direct(
                         PrefixId::<IPv6>::new(
                             addr.into(),
                             search_pfx.len(),
                         ),
                         options,
+                        options.mui,
                         guard
                     ),
                 }
@@ -676,7 +680,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// The `search_pfx` argument can be either a IPv4 or an IPv6
             /// prefix. The `search_pfx` itself doesn't have to be present
             /// in the store for an iterator to be non-empty, i.e. if
-            /// more-specific prefixes exist for a non-existant
+            /// more-specific prefixes exist for a non-existent
             /// `search_pfx` the iterator will yield these more-specific
             /// prefixes.
             ///
@@ -685,6 +689,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// instead of cloning them into it.
             pub fn more_specifics_from(&'a self,
                 search_pfx: &Prefix,
+                mui: Option<u32>,
                 guard: &'a Guard,
             ) -> QueryResult<M> {
 
@@ -694,6 +699,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                             addr.into(),
                             search_pfx.len(),
                         ),
+                        mui,
                         guard
                     ),
                     std::net::IpAddr::V6(addr) => self.v6.more_specifics_from(
@@ -701,6 +707,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                             addr.into(),
                             search_pfx.len(),
                         ),
+                        mui,
                         guard
                     ),
                 }
@@ -713,7 +720,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// The `search_pfx` argument can be either a IPv4 or an IPv6
             /// prefix. The `search_pfx` itself doesn't have to be present
             /// in the store for an iterator to be non-empty, i.e. if
-            /// less-specific prefixes exist for a non-existant
+            /// less-specific prefixes exist for a non-existent
             /// `search_pfx` the iterator will yield these less-specific
             /// prefixes.
             ///
@@ -722,6 +729,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// instead of cloning them into it.
             pub fn less_specifics_from(&'a self,
                 search_pfx: &Prefix,
+                mui: Option<u32>,
                 guard: &'a Guard,
             ) -> QueryResult<M> {
 
@@ -731,6 +739,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                             addr.into(),
                             search_pfx.len(),
                         ),
+                        mui,
                         guard
                     ),
                     std::net::IpAddr::V6(addr) => self.v6.less_specifics_from(
@@ -738,6 +747,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                             addr.into(),
                             search_pfx.len(),
                         ),
+                        mui,
                         guard
                     ),
                 }
@@ -788,6 +798,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// ```
             pub fn less_specifics_iter_from(&'a self,
                 search_pfx: &Prefix,
+                mui: Option<u32>,
                 guard: &'a Guard,
                 ) -> impl Iterator<Item=PrefixRecord<M>> + 'a {
                     let (left, right) = match search_pfx.addr() {
@@ -798,6 +809,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                                             addr.into(),
                                             search_pfx.len(),
                                         ),
+                                        mui,
                                         guard
                                     )
                                     .map(|p| PrefixRecord::from(p))
@@ -813,6 +825,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                                             addr.into(),
                                             search_pfx.len(),
                                         ),
+                                        mui,
                                         guard
                                     )
                                     .map(|p| PrefixRecord::from(p))
@@ -867,34 +880,56 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// ```
             pub fn more_specifics_iter_from(&'a self,
                 search_pfx: &Prefix,
+                mui: Option<u32>,
                 guard: &'a Guard,
             ) -> impl Iterator<Item=PrefixRecord<M>> + 'a {
+
                 let (left, right) = match search_pfx.addr() {
-                    std::net::IpAddr::V4(addr) => {
-                        (
-                            Some(self.v4.store.more_specific_prefix_iter_from(
-                                    PrefixId::<IPv4>::new(
-                                        addr.into(),
-                                        search_pfx.len(),
+                    std::net::IpAddr::V4(addr) => {              
+                        let bmin = unsafe { 
+                            self.v4.store.withdrawn_muis_bmin.load(
+                                Ordering::Acquire, guard
+                            ).deref()
+                        };
+                        if mui.is_some() && bmin.contains(mui.unwrap()) {
+                                (None, None)
+                            } else {
+                                (
+                                    Some(self.v4.store.more_specific_prefix_iter_from(
+                                            PrefixId::<IPv4>::new(
+                                                addr.into(),
+                                                search_pfx.len(),
+                                            ),
+                                            mui,
+                                            guard
+                                        ).map(|p| PrefixRecord::from(p))
                                     ),
-                                    guard
-                                ).map(|p| PrefixRecord::from(p))
-                            ),
-                            None
-                        )
-                    }
+                                    None
+                                )
+                            }
+                        }
                     std::net::IpAddr::V6(addr) => {
-                        (
-                            None,
-                            Some(self.v6.store.more_specific_prefix_iter_from(
-                                    PrefixId::<IPv6>::new(
-                                        addr.into(),
-                                        search_pfx.len(),
-                                    ),
-                                    guard
-                                ).map(|p| PrefixRecord::from(p))
+                        let bmin = unsafe { 
+                            self.v6.store.withdrawn_muis_bmin.load(
+                                Ordering::Acquire, guard
+                            ).deref()
+                        };
+                        if mui.is_some() && bmin.contains(mui.unwrap()) {
+                            (None, None)
+                        } else {
+                            (
+                                None,
+                                Some(self.v6.store.more_specific_prefix_iter_from(
+                                        PrefixId::<IPv6>::new(
+                                            addr.into(),
+                                            search_pfx.len(),
+                                        ),
+                                        mui,
+                                        guard
+                                    ).map(|p| PrefixRecord::from(p))
+                                )
                             )
-                        )
+                        }
                     }
                 };
                 left.into_iter().flatten().chain(right.into_iter().flatten())
@@ -913,20 +948,21 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 &self,
                 prefix: &Prefix,
                 record: Record<M>,
+                update_path_selections: Option<TieBreakerInfo>
             ) -> Result<UpsertReport, PrefixStoreError> {
                 match prefix.addr() {
                     std::net::IpAddr::V4(addr) => {
                         self.v4.insert(
                             PrefixId::<IPv4>::from(*prefix),
                             record,
-                            // self.user_data.as_ref(),
+                            update_path_selections,
                         )
                     }
                     std::net::IpAddr::V6(addr) => {
                         self.v6.insert(
                             PrefixId::<IPv6>::from(*prefix),
                             record,
-                            // self.user_data.as_ref(),
+                            update_path_selections,
                         )
                     }
                 }
@@ -1079,6 +1115,114 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             ) -> impl Iterator<Item=PrefixRecord<M>> + 'a {
                 self.v6.store.prefixes_iter(guard)
                     .map(|p| PrefixRecord::from(p))
+            }
+
+            /// Change the local status of the record for the combination of
+            /// (prefix, multi_uniq_id) to Withdrawn. Note that by default the
+            /// global `Withdrawn` status for a mui overrides the local status
+            /// of a record.
+            pub fn mark_mui_as_withdrawn_for_prefix(
+                &mut self,
+                prefix: &Prefix,
+                mui: u32
+            ) -> Result<(), PrefixStoreError> {
+                let guard = &epoch::pin();
+                match prefix.addr() {
+                    std::net::IpAddr::V4(addr) => {
+                        self.v4.store.mark_mui_as_withdrawn_for_prefix(
+                            PrefixId::<IPv4>::from(*prefix),
+                            mui,
+                            &guard
+                        )
+                    }
+                    std::net::IpAddr::V6(addr) => {
+                        self.v6.store.mark_mui_as_withdrawn_for_prefix(
+                            PrefixId::<IPv6>::from(*prefix),
+                            mui,
+                            &guard
+                        )
+                    }
+                }
+            }
+
+            /// Change the local status of the record for the combination of
+            /// (prefix, multi_uniq_id) to Active. Note that by default the
+            /// global `Withdrawn` status for a mui overrides the local status
+            /// of a record.
+            pub fn mark_mui_as_active_for_prefix(
+                &mut self,
+                prefix: &Prefix,
+                mui: u32
+            ) -> Result<(), PrefixStoreError> {
+                let guard = &epoch::pin();
+                match prefix.addr() {
+                    std::net::IpAddr::V4(addr) => {
+                        self.v4.store.mark_mui_as_active_for_prefix(
+                            PrefixId::<IPv4>::from(*prefix),
+                            mui,
+                            &guard
+                        )
+                    }
+                    std::net::IpAddr::V6(addr) => {
+                        self.v6.store.mark_mui_as_active_for_prefix(
+                            PrefixId::<IPv6>::from(*prefix),
+                            mui,
+                            &guard
+                        )
+                    }
+                }
+            }
+
+            /// Change the status of all records for IPv4 prefixes globally to
+            /// Active. Note that the global status will by default be
+            /// overridden by the local status of the record.
+            pub fn mark_mui_as_active_v4(
+                &mut self,
+                mui: u32
+            ) -> Result<(), PrefixStoreError> {
+                let guard = &epoch::pin();
+                
+                self.v4.store.mark_mui_as_active(
+                    mui,
+                    &guard
+                )
+            }
+
+            /// Change the status of all records for IPv6 prefixes globally to
+            /// Active. Note that the global status will by default be
+            /// overridden by the local status of the record.
+            pub fn mark_mui_as_active_v6(
+                &mut self,
+                mui: u32
+            ) -> Result<(), PrefixStoreError> {
+                let guard = &epoch::pin();
+                
+                self.v6.store.mark_mui_as_active(
+                    mui,
+                    &guard
+                )
+            }
+
+            // Whether the global status for IPv4 prefixes and the specified
+            // multi_uniq_id is set to `Withdrawn`.
+            pub fn mui_is_withdrawn_v4(
+                &self,
+                mui: u32
+            ) -> bool {
+                let guard = &epoch::pin();
+
+                self.v4.store.mui_is_withdrawn(mui, guard)
+            }
+
+            // Whether the global status for IPv6 prefixes and the specified
+            // multi_uniq_id is set to `Active`.
+            pub fn mui_is_withdrawn_v6(
+                &self,
+                mui: u32
+            ) -> bool {
+                let guard = &epoch::pin();
+
+                self.v6.store.mui_is_withdrawn(mui, guard)
             }
 
             /// Returns the number of all prefixes in the store.
