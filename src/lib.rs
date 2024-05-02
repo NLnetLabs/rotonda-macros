@@ -935,6 +935,64 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 left.into_iter().flatten().chain(right.into_iter().flatten())
             }
 
+            pub fn iter_records_for_mui_v4(
+                &'a self,
+                mui: u32,
+                include_withdrawn: bool,
+                guard: &'a Guard
+            ) -> impl Iterator<Item=PrefixRecord<M>> +'a {
+             
+                let bmin = unsafe { 
+                    self.v4.store.withdrawn_muis_bmin.load(
+                        Ordering::Acquire, guard
+                    ).deref()
+                };
+
+                if bmin.contains(mui) {
+                    None
+                } else {
+                    Some(
+                        self.v4.store.more_specific_prefix_iter_from(
+                                PrefixId::<IPv4>::new(
+                                    0,
+                                    0,
+                                ),
+                                Some(mui),
+                                guard
+                            ).map(|p| PrefixRecord::from(p))
+                    )    
+                }.into_iter().flatten()
+            }
+
+            pub fn iter_records_for_mui_v6(
+                &'a self,
+                mui: u32,
+                include_withdrawn: bool,
+                guard: &'a Guard
+            ) -> impl Iterator<Item=PrefixRecord<M>> +'a {
+             
+                let bmin = unsafe { 
+                    self.v4.store.withdrawn_muis_bmin.load(
+                        Ordering::Acquire, guard
+                    ).deref()
+                };
+
+                if bmin.contains(mui) {
+                    None
+                } else {
+                    Some(
+                        self.v6.store.more_specific_prefix_iter_from(
+                                PrefixId::<IPv6>::new(
+                                    0,
+                                    0,
+                                ),
+                                Some(mui),
+                                guard
+                            ).map(|p| PrefixRecord::from(p))
+                    )    
+                }.into_iter().flatten()
+            }
+
             pub fn insert(
                 &self,
                 prefix: &Prefix,
