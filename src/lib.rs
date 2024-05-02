@@ -935,15 +935,6 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 left.into_iter().flatten().chain(right.into_iter().flatten())
             }
 
-
-            // &self,
-            // pfx: PrefixId<AF>,
-            // multi_uniq_id: u32,
-            // ltime: u64,
-            // status: RouteStatus,
-            // meta: M,
-            // user_data:
-
             pub fn insert(
                 &self,
                 prefix: &Prefix,
