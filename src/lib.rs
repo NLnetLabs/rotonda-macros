@@ -948,7 +948,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                     ).deref()
                 };
 
-                if bmin.contains(mui) {
+                if bmin.contains(mui) && !include_withdrawn {
                     None
                 } else {
                     Some(
@@ -977,7 +977,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                     ).deref()
                 };
 
-                if bmin.contains(mui) {
+                if bmin.contains(mui) && !include_withdrawn {
                     None
                 } else {
                     Some(
@@ -1232,6 +1232,21 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 let guard = &epoch::pin();
                 
                 self.v4.store.mark_mui_as_active(
+                    mui,
+                    &guard
+                )
+            }
+
+            /// Change the status of all records for IPv4 prefixes globally to
+            /// Withdrawn. Note that the global status will by default be
+            /// overridden by the local status of the record.
+            pub fn mark_mui_as_withdrawn_v4(
+                &mut self,
+                mui: u32
+            ) -> Result<(), PrefixStoreError> {
+                let guard = &epoch::pin();
+                
+                self.v4.store.mark_mui_as_withdrawn(
                     mui,
                     &guard
                 )
