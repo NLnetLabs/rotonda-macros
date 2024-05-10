@@ -690,6 +690,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             pub fn more_specifics_from(&'a self,
                 search_pfx: &Prefix,
                 mui: Option<u32>,
+                include_withdrawn: bool,
                 guard: &'a Guard,
             ) -> QueryResult<M> {
 
@@ -700,6 +701,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                             search_pfx.len(),
                         ),
                         mui,
+                        include_withdrawn,
                         guard
                     ),
                     std::net::IpAddr::V6(addr) => self.v6.more_specifics_from(
@@ -708,6 +710,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                             search_pfx.len(),
                         ),
                         mui,
+                        include_withdrawn,
                         guard
                     ),
                 }
@@ -730,6 +733,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             pub fn less_specifics_from(&'a self,
                 search_pfx: &Prefix,
                 mui: Option<u32>,
+                include_withdrawn: bool,
                 guard: &'a Guard,
             ) -> QueryResult<M> {
 
@@ -740,6 +744,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                             search_pfx.len(),
                         ),
                         mui,
+                        include_withdrawn,
                         guard
                     ),
                     std::net::IpAddr::V6(addr) => self.v6.less_specifics_from(
@@ -748,6 +753,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                             search_pfx.len(),
                         ),
                         mui,
+                        include_withdrawn,
                         guard
                     ),
                 }
@@ -799,6 +805,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             pub fn less_specifics_iter_from(&'a self,
                 search_pfx: &Prefix,
                 mui: Option<u32>,
+                include_withdrawn: bool,
                 guard: &'a Guard,
                 ) -> impl Iterator<Item=PrefixRecord<M>> + 'a {
                     let (left, right) = match search_pfx.addr() {
@@ -810,6 +817,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                                             search_pfx.len(),
                                         ),
                                         mui,
+                                        include_withdrawn,
                                         guard
                                     )
                                     .map(|p| PrefixRecord::from(p))
@@ -826,6 +834,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                                             search_pfx.len(),
                                         ),
                                         mui,
+                                        include_withdrawn,
                                         guard
                                     )
                                     .map(|p| PrefixRecord::from(p))
@@ -881,6 +890,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             pub fn more_specifics_iter_from(&'a self,
                 search_pfx: &Prefix,
                 mui: Option<u32>,
+                include_withdrawn: bool,
                 guard: &'a Guard,
             ) -> impl Iterator<Item=PrefixRecord<M>> + 'a {
 
@@ -901,6 +911,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                                                 search_pfx.len(),
                                             ),
                                             mui,
+                                            include_withdrawn,
                                             guard
                                         ).map(|p| PrefixRecord::from(p))
                                     ),
@@ -925,6 +936,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                                             search_pfx.len(),
                                         ),
                                         mui,
+                                        include_withdrawn,
                                         guard
                                     ).map(|p| PrefixRecord::from(p))
                                 )
@@ -958,6 +970,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                                     0,
                                 ),
                                 Some(mui),
+                                include_withdrawn,
                                 guard
                             ).map(|p| PrefixRecord::from(p))
                     )    
@@ -987,6 +1000,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                                     0,
                                 ),
                                 Some(mui),
+                                include_withdrawn,
                                 guard
                             ).map(|p| PrefixRecord::from(p))
                     )    
