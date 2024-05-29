@@ -453,7 +453,8 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             ///                  println!("insert {}", pfx.unwrap());
             ///                  tree_bitmap.insert(
             ///                      &pfx.unwrap(),
-            ///                      NoMeta::Empty,
+            ///                      Record::new(0, 0, RouteStatus::Active, NoMeta::Empty),
+            ///                      None
             ///                  ).unwrap();
             ///              }
             ///          })
@@ -467,81 +468,6 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 })
             }
         }
-
-        // impl<
-        //         M: Meta
-        //     > #store_name<M>
-        // {
-            /// Provide data for use by your MergeUpdate impl.
-            ///
-            /// Use this to provide additional context to the MergeUpdate impl
-            /// functions beyond the store item being added and the current
-            /// state of the store item it is being added to.
-            ///
-            /// The meaning of the data that you provide is determined by you,
-            /// it has no meaning to the store.
-            ///
-            /// Possible use cases include passing to your MergeUpdate impl a
-            /// custom allocator, or logger, or configurable update policy
-            /// such as an eviction strategy to manage the size of the
-            /// metadata over many updates).
-            ///
-            /// # Example
-            /// ```
-            /// use std::{sync::Arc, thread};
-            /// use std::net::Ipv4Addr;
-            ///
-            /// use rotonda_store::prelude::*;
-            /// use rotonda_store::prelude::multi::*;
-            ///
-            /// #[derive(Debug)]
-            /// enum LogMode {
-            ///     None,
-            ///     Summary,
-            ///     Verbose,
-            /// }
-            ///
-            /// #[derive(Clone, Debug)]
-            /// struct LoggableMeta;
-            /// 
-            /// impl std::fmt::Display for LoggableMeta {
-            ///     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            ///         f.write_str("LoggableMeta")
-            ///     }
-            /// }
-            ///
-            /// impl MergeUpdate for LoggableMeta {
-            ///     type UserDataIn = LogMode;
-            ///     type UserDataOut = ();
-            ///
-            ///     fn merge_update(
-            ///         &mut self,
-            ///         _: Self,
-            ///         _: Option<&Self::UserDataIn>,
-            ///     ) -> Result<(), Box<dyn std::error::Error>> {
-            ///         Ok(())
-            ///     }
-            ///
-            ///     fn clone_merge_update(
-            ///         &self,
-            ///         _: &Self,
-            ///         _: Option<&Self::UserDataIn>,
-            ///     ) -> Result<(Self, Self::UserDataOut), Box<dyn std::error::Error>> {
-            ///         Ok((Self, ()))
-            ///     }
-            /// }
-            ///
-            /// let tree_bitmap = MultiThreadedStore::<LoggableMeta>::new().unwrap()
-            ///     .with_user_data(LogMode::None);
-            /// ```
-            // pub fn with_user_data(self, user_data: <M>::UserDataIn) -> Self {
-            //     Self {
-            //         v4: self.v4,
-            //         v6: self.v6,
-            //         // user_data: Some(user_data),
-            //     }
-            // }
-        // }
 
         impl<'a, M: Meta,
             > #store_name<M>
@@ -612,29 +538,32 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             ///
             /// store.insert(
             ///     &Prefix::new(pfx_addr, 22).unwrap(),
-            ///     PrefixAs(211321),
+            ///     Record::new(0, 0, RouteStatus::Active, PrefixAs(211321)),
+            ///     None
             /// );
             ///
             /// let res = store.match_prefix(
             ///     &Prefix::new(pfx_addr, 24).unwrap(),
             ///     &MatchOptions {
             ///         match_type: MatchType::LongestMatch,
-            ///         include_all_records: false,
+            ///         include_withdrawn: false,
             ///         include_less_specifics: false,
-            ///         include_more_specifics: false
+            ///         include_more_specifics: false,
+            ///         mui: None
             ///     },
             ///     guard
             /// );
             ///
-            /// assert_eq!(res.prefix_meta.unwrap().0, 211321);
+            /// assert_eq!(res.prefix_meta[0].meta.0, 211321);
             ///
             /// let res = store.match_prefix(
             ///     &Prefix::new(pfx_addr, 24).unwrap(),
             ///         &MatchOptions {
             ///             match_type: MatchType::ExactMatch,
-            ///             include_all_records: false,
+            ///             include_withdrawn: false,
             ///             include_less_specifics: false,
-            ///             include_more_specifics: false
+            ///             include_more_specifics: false,
+            ///             mui: None
             ///         },
             ///         guard
             ///     );
@@ -766,7 +695,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// The `search_pfx` argument can be either a IPv4 or an IPv6
             /// prefix. The `search_pfx` itself doesn't have to be present
             /// in the store for an iterator to be non-empty, i.e. if
-            /// less-specific prefixes exist for a non-existant
+            /// less-specific prefixes exist for a non-existent
             /// `search_pfx` the iterator will yield these less-specific
             /// prefixes.
             ///
@@ -792,14 +721,17 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             ///
             /// store.insert(
             ///     &Prefix::new(pfx_addr, 22).unwrap(),
-            ///     PrefixAs(211321),
+            ///     Record::new(0, 0, RouteStatus::Active, PrefixAs(211321)),
+            ///     None
             /// );
             ///
             /// for prefix_record in store.less_specifics_iter_from(
             ///     &Prefix::new(pfx_addr, 24).unwrap(),
+            ///     None,
+            ///     false,
             ///     &guard
             /// ) {
-            ///    assert_eq!(prefix_record.meta.0, 211321);
+            ///    assert_eq!(prefix_record.meta[0].meta.0, 211321);
             /// }
             /// ```
             pub fn less_specifics_iter_from(&'a self,
@@ -852,7 +784,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// The `search_pfx` argument can be either a IPv4 or an IPv6
             /// prefix. The `search_pfx` itself doesn't have to be present
             /// in the store for an iterator to be non-empty, i.e. if
-            /// more-specific prefixes exist for a non-existant
+            /// more-specific prefixes exist for a non-existent
             /// `search_pfx` the iterator will yield these more-specific
             /// prefixes.
             ///
@@ -877,14 +809,17 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             ///
             /// store.insert(
             ///     &Prefix::new(pfx_addr, 24).unwrap(),
-            ///     PrefixAs(211321),
+            ///     Record::new(0, 0, RouteStatus::Active, PrefixAs(211321)),
+            ///     None
             /// );
             ///
             /// for prefix_record in store.more_specifics_iter_from(
             ///     &Prefix::new(pfx_addr, 22).unwrap(),
+            ///     None,
+            ///     false,
             ///     &guard
             /// ) {
-            ///    assert_eq!(prefix_record.meta.0, 211321);
+            ///    assert_eq!(prefix_record.meta[0].meta.0, 211321);
             /// }
             /// ```
             pub fn more_specifics_iter_from(&'a self,
@@ -1056,12 +991,12 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// let pfx_addr = "185.49.140.0".parse::<Ipv4Addr>()
             ///         .unwrap()
             ///         .into();
-            /// let our_asn = PrefixAs(211321);
+            /// let our_asn = Record::new(0, 0, RouteStatus::Active, PrefixAs(211321));
             ///
-            /// store.insert(&Prefix::new(pfx_addr, 22).unwrap(), our_asn);
-            /// store.insert(&Prefix::new(pfx_addr, 23).unwrap(), our_asn);
-            /// store.insert(&Prefix::new(pfx_addr, 24).unwrap(), our_asn);
-            /// store.insert(&Prefix::new(pfx_addr, 25).unwrap(), our_asn);
+            /// store.insert(&Prefix::new(pfx_addr, 22).unwrap(), our_asn.clone(), None);
+            /// store.insert(&Prefix::new(pfx_addr, 23).unwrap(), our_asn.clone(), None);
+            /// store.insert(&Prefix::new(pfx_addr, 24).unwrap(), our_asn.clone(), None);
+            /// store.insert(&Prefix::new(pfx_addr, 25).unwrap(), our_asn, None);
             ///
             /// let mut iter = store.prefixes_iter(&guard);
             ///
@@ -1107,12 +1042,12 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// let pfx_addr = "185.49.140.0".parse::<Ipv4Addr>()
             ///         .unwrap()
             ///         .into();
-            /// let our_asn = PrefixAs(211321);
+            /// let our_asn = Record::new(0, 0, RouteStatus::Active, PrefixAs(211321));
             ///
-            /// store.insert(&Prefix::new(pfx_addr, 22).unwrap(), our_asn);
-            /// store.insert(&Prefix::new(pfx_addr, 23).unwrap(), our_asn);
-            /// store.insert(&Prefix::new(pfx_addr, 24).unwrap(), our_asn);
-            /// store.insert(&Prefix::new(pfx_addr, 25).unwrap(), our_asn);
+            /// store.insert(&Prefix::new(pfx_addr, 22).unwrap(), our_asn.clone(), None);
+            /// store.insert(&Prefix::new(pfx_addr, 23).unwrap(), our_asn.clone(), None);
+            /// store.insert(&Prefix::new(pfx_addr, 24).unwrap(), our_asn.clone(), None);
+            /// store.insert(&Prefix::new(pfx_addr, 25).unwrap(), our_asn, None);
             ///
             /// let mut iter = store.prefixes_iter(&guard);
             ///
@@ -1154,12 +1089,12 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// let pfx_addr = "2a04:b900::".parse::<Ipv6Addr>()
             ///         .unwrap()
             ///         .into();
-            /// let our_asn = PrefixAs(211321);
+            /// let our_asn = Record::new(0, 0, RouteStatus::Active, PrefixAs(211321));
             ///
-            /// store.insert(&Prefix::new(pfx_addr, 29).unwrap(), our_asn);
-            /// store.insert(&Prefix::new(pfx_addr, 48).unwrap(), our_asn);
-            /// store.insert(&Prefix::new(pfx_addr, 56).unwrap(), our_asn);
-            /// store.insert(&Prefix::new(pfx_addr, 64).unwrap(), our_asn);
+            /// store.insert(&Prefix::new(pfx_addr, 29).unwrap(), our_asn.clone(), None);
+            /// store.insert(&Prefix::new(pfx_addr, 48).unwrap(), our_asn.clone(), None);
+            /// store.insert(&Prefix::new(pfx_addr, 56).unwrap(), our_asn.clone(), None);
+            /// store.insert(&Prefix::new(pfx_addr, 64).unwrap(), our_asn, None);
             ///
             /// let mut iter = store.prefixes_iter(&guard);
             ///
