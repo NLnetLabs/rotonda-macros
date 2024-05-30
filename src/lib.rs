@@ -388,13 +388,36 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let store = quote! {
         /// A concurrently read/writable, lock-free Prefix Store, for use in a
-        /// multi-threaded context.
+        /// multi-threaded context. 
+        /// 
+        /// This store will hold records keyed on Prefix, and with values
+        /// consisting of a multi-map (a map that can hold multiple values per
+        /// key), filled with Records.
+        /// 
+        /// Records in the store contain the metadata, a `multi_uniq_id`,
+        /// logical time (to disambiguate the order of inserts into the store)
+        /// and the status of the Record.
+        /// 
+        /// Effectively this means that the store holds values for the set of
+        /// `(prefix, multi_uniq_id)` pairs, where the primary key is the
+        /// prefix, and the secondary key is the `multi_uniq_id`. These
+        /// `multi_uniq_id`s are unique across all of the store. The store
+        /// facilitates iterating over and changing the status for all
+        /// prefixes per `multi_uniq_id`.
+        /// 
+        /// The store has the concept of a global status for a
+        /// `multi_uniq_id`, e.g. to set all prefixes for a `multi_uniq_id` in
+        /// one atomic transaction to withdrawn. It also has local statuses
+        /// per `(prefix, multi_uniq_id)` pairs, e.g. to withdraw one value
+        /// for a `multi_uniq_id`.
+        /// 
+        /// This way the store can hold RIBs for multiple peers in one
+        /// data-structure.
         pub struct #store_name<
             M: Meta
         > {
             v4: #strides4_name<M>,
             v6: #strides6_name<M>,
-            // user_data: Option<<M as MergeUpdate>::UserDataIn>,
         }
 
         impl<
@@ -464,7 +487,6 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 Ok(Self {
                     v4: #strides4_name::new()?,
                     v6: #strides6_name::new()?,
-                    // user_data: None,
                 })
             }
         }
@@ -942,6 +964,18 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 }.into_iter().flatten()
             }
 
+            /// Insert or replace a Record into the Store
+            /// 
+            /// The specified Record will replace an existing record in the
+            /// store if the multi-map for the specified prefix already has an
+            /// entry for the `multi_uniq_id`, otherwise it will be added to
+            /// the multi-map.
+            /// 
+            /// If the `update_path_sections` argument is used the best path
+            /// selection will be run on the resulting multi-map after insert
+            /// and stored for the specified prefix.
+            /// 
+            /// Returns some metrics about the resulting insert.
             pub fn insert(
                 &self,
                 prefix: &Prefix,
@@ -1174,9 +1208,10 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 }
             }
 
-            /// Change the status of all records for IPv4 prefixes globally to
-            /// Active. Note that the global status will by default be
-            /// overridden by the local status of the record.
+            /// Change the status of all records for IPv4 prefixes for this
+            /// `multi_uniq_id` globally to Active.  Note that the global
+            /// `Active` status will be overridden by the local status of the
+            /// record.
             pub fn mark_mui_as_active_v4(
                 &self,
                 mui: u32
@@ -1189,9 +1224,12 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 )
             }
 
-            /// Change the status of all records for IPv4 prefixes globally to
-            /// Withdrawn. Note that the global status will by default be
-            /// overridden by the local status of the record.
+            /// Change the status of all records for IPv4 prefixes for this
+            /// `multi_uniq_id` globally to Withdrawn. A global `Withdrawn`
+            /// status for a `multi_uniq_id` overrides the local status of
+            /// prefixes for this mui. However the local status can still be
+            /// modified. This modification will take effect if the global
+            /// status is changed to `Active`.
             pub fn mark_mui_as_withdrawn_v4(
                 &self,
                 mui: u32
@@ -1204,9 +1242,10 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 )
             }
 
-            /// Change the status of all records for IPv6 prefixes globally to
-            /// Active. Note that the global status will by default be
-            /// overridden by the local status of the record.
+            /// Change the status of all records for IPv6 prefixes for this
+            /// `multi_uniq_id` globally to Active.  Note that the global
+            /// `Active` status will be overridden by the local status of the
+            /// record.
             pub fn mark_mui_as_active_v6(
                 &self,
                 mui: u32
@@ -1220,7 +1259,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             }
 
             // Whether the global status for IPv4 prefixes and the specified
-            // multi_uniq_id is set to `Withdrawn`.
+            // `multi_uniq_id` is set to `Withdrawn`.
             pub fn mui_is_withdrawn_v4(
                 &self,
                 mui: u32
@@ -1231,7 +1270,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             }
 
             // Whether the global status for IPv6 prefixes and the specified
-            // multi_uniq_id is set to `Active`.
+            // `multi_uniq_id` is set to `Active`.
             pub fn mui_is_withdrawn_v6(
                 &self,
                 mui: u32
