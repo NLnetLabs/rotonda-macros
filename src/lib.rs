@@ -966,8 +966,9 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 }
             }
 
-            /// Returns an unordered iterator over all prefixes, both IPv4
-            /// and IPv6, currently in the store, including meta-data.
+            /// Returns an unordered iterator over all prefixes, with any
+            /// status (including Withdrawn), for both IPv4 and IPv6,
+            /// currently in the store, including meta-data.
             ///
             /// Although the iterator is unordered within an address-family,
             /// it first iterates over all IPv4 addresses and then over all
@@ -1022,7 +1023,8 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             }
 
             /// Returns an unordered iterator over all IPv4 prefixes in the
-            /// currently in the store, including meta-data.
+            /// currently in the store, with any status (including Withdrawn),
+            /// including meta-data.
             ///
             /// The `guard` should be a `&epoch::pin()`. It allows the
             /// iterator to create and return references to the meta-data
@@ -1069,7 +1071,8 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             }
 
             /// Returns an unordered iterator over all IPv6 prefixes in the
-            /// currently in the store, including meta-data.
+            /// currently in the store, with any status (including Withdrawn),
+            /// including meta-data.
             ///
             /// The `guard` should be a `&epoch::pin()`. It allows the
             /// iterator to create and return references to the meta-data
@@ -1120,7 +1123,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// global `Withdrawn` status for a mui overrides the local status
             /// of a record.
             pub fn mark_mui_as_withdrawn_for_prefix(
-                &mut self,
+                &self,
                 prefix: &Prefix,
                 mui: u32
             ) -> Result<(), PrefixStoreError> {
@@ -1148,7 +1151,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// global `Withdrawn` status for a mui overrides the local status
             /// of a record.
             pub fn mark_mui_as_active_for_prefix(
-                &mut self,
+                &self,
                 prefix: &Prefix,
                 mui: u32
             ) -> Result<(), PrefixStoreError> {
@@ -1175,7 +1178,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// Active. Note that the global status will by default be
             /// overridden by the local status of the record.
             pub fn mark_mui_as_active_v4(
-                &mut self,
+                &self,
                 mui: u32
             ) -> Result<(), PrefixStoreError> {
                 let guard = &epoch::pin();
@@ -1190,7 +1193,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// Withdrawn. Note that the global status will by default be
             /// overridden by the local status of the record.
             pub fn mark_mui_as_withdrawn_v4(
-                &mut self,
+                &self,
                 mui: u32
             ) -> Result<(), PrefixStoreError> {
                 let guard = &epoch::pin();
@@ -1205,7 +1208,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// Active. Note that the global status will by default be
             /// overridden by the local status of the record.
             pub fn mark_mui_as_active_v6(
-                &mut self,
+                &self,
                 mui: u32
             ) -> Result<(), PrefixStoreError> {
                 let guard = &epoch::pin();
