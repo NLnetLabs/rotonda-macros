@@ -980,7 +980,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 &self,
                 prefix: &Prefix,
                 record: Record<M>,
-                update_path_selections: Option<TiebreakerInfo>
+                update_path_selections: Option<M::TBI>
             ) -> Result<UpsertReport, PrefixStoreError> {
                 match prefix.addr() {
                     std::net::IpAddr::V4(addr) => {
