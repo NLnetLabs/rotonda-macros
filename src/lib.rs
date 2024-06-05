@@ -624,6 +624,137 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 }
             }
 
+            /// Return the record that belongs to the pre-calculated and
+            /// stored best path for a given prefix.
+            /// 
+            /// If the Prefix does not exist in the store `None` is returned.
+            /// If the prefix does exist, but no best path was calculated
+            /// (yet), a `PrefixStoreError::BestPathNotFound` error will be
+            /// returned. A returned result of
+            /// `PrefixError::StoreNotReadyError` should never happen: it
+            /// would indicate an internal inconsistency in the store.
+            pub fn best_path(&'a self,
+                search_pfx: &Prefix,
+                guard: &Guard
+            ) -> Option<Result<Record<M>, PrefixStoreError>> {
+
+                match search_pfx.addr() {
+                    std::net::IpAddr::V4(addr) => self.v4.store
+                        .non_recursive_retrieve_prefix_with_guard(
+                            PrefixId::<IPv4>::new(
+                                addr.into(),
+                                search_pfx.len(),
+                            ),
+                            &guard)
+                        .0
+                        .map(|p_rec| unsafe { p_rec
+                            .get_path_selections(guard).best()
+                            .map_or_else(
+                                || Err(PrefixStoreError::BestPathNotFound),
+                                |mui| p_rec.record_map
+                                    .get_record_for_active_mui(mui)
+                                    .ok_or(PrefixStoreError::StoreNotReadyError)
+                            )
+                        }),
+                    std::net::IpAddr::V6(addr) => self.v6.store
+                        .non_recursive_retrieve_prefix_with_guard(
+                            PrefixId::<IPv6>::new(
+                                addr.into(),
+                                search_pfx.len(),
+                            ),
+                            &guard)
+                        .0
+                        .map(|p_rec| unsafe { p_rec
+                            .get_path_selections(guard).best()
+                            .map_or_else(
+                                || Err(PrefixStoreError::BestPathNotFound),
+                                |mui| p_rec.record_map
+                                    .get_record_for_active_mui(mui)
+                                    .ok_or(PrefixStoreError::StoreNotReadyError)
+                            )
+                        })
+                }
+            }
+
+            /// Calculate and store the best path for the specified Prefix.
+            /// 
+            /// If the result of the calculation is successful it will be
+            /// stored for the prefix. If they were set, it will return the
+            /// multi_uniq_id of the best path and the one for the backup
+            /// path, respectively. If the prefix does not exist in the store,
+            /// `None` will be returned. If the best path cannot be
+            /// calculated, a `Ok(None, None)` will be returned. 
+            /// 
+            /// Failing to calculate a best path, may be caused by
+            /// unavailability of any active paths, or by a lack of data (in
+            /// either the paths, or the supplied `TiebreakerInfo`).
+            /// 
+            /// An Error result indicates an inconsistency in the store.
+            pub fn calculate_and_store_best_and_backup_path(
+                &self, 
+                search_pfx: &Prefix,
+                tbi: &<M as Meta>::TBI,
+                guard: &Guard
+            ) -> Result<(Option<u32>, Option<u32>), PrefixStoreError> {
+                match search_pfx.addr() {
+                    std::net::IpAddr::V4(addr) => self.v4.store
+                        .non_recursive_retrieve_prefix_with_guard(
+                            PrefixId::<IPv4>::new(
+                                addr.into(),
+                                search_pfx.len(),
+                            ),
+                            guard
+                        ).0.map_or(
+                            Err(PrefixStoreError::StoreNotReadyError),
+                            |p_rec| p_rec.calculate_and_store_best_backup(
+                                tbi, guard), 
+                        ),
+                    std::net::IpAddr::V6(addr) => self.v6.store
+                        .non_recursive_retrieve_prefix_with_guard(
+                            PrefixId::<IPv6>::new(
+                                addr.into(),
+                                search_pfx.len(),
+                            ),
+                            guard
+                        ).0.map_or(
+                            Err(PrefixStoreError::StoreNotReadyError),
+                            |p_rec| p_rec.calculate_and_store_best_backup(
+                                tbi, guard), 
+                        ),
+                }
+            }
+
+            pub fn is_ps_outdated(
+                &self,
+                search_pfx: &Prefix,
+                guard: &Guard
+            ) -> Result<bool, PrefixStoreError> {
+                match search_pfx.addr() {
+                    std::net::IpAddr::V4(addr) => self.v4.store
+                        .non_recursive_retrieve_prefix_with_guard(
+                            PrefixId::<IPv4>::new(
+                                addr.into(),
+                                search_pfx.len(),
+                            ),
+                            guard
+                        ).0.map_or(
+                            Err(PrefixStoreError::StoreNotReadyError),
+                            |p| Ok(p.is_ps_outdated(guard))
+                        ),
+                    std::net::IpAddr::V6(addr) => self.v6.store
+                        .non_recursive_retrieve_prefix_with_guard(
+                            PrefixId::<IPv6>::new(
+                                addr.into(),
+                                search_pfx.len(),
+                            ),
+                            guard
+                        ).0.map_or(
+                            Err(PrefixStoreError::StoreNotReadyError),
+                            |p| Ok(p.is_ps_outdated(guard))
+                        )
+                }
+            }
+
             /// Return a [QueryResult] that contains all the more-specific
             /// prefixes of the `search_pfx` in the store, including the
             /// meta-data of these prefixes.
