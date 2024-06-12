@@ -1,5 +1,15 @@
 # Change Log
 
+## Unreleased Version
+
+Released xxxx-xx-xx.
+
+Breaking Changes
+
+New
+
+Other Changes
+
 ## 0.4.0-rc0
 
 Released 2024-06-12.
