@@ -1389,6 +1389,52 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 )
             }
 
+            /// Change the status of all records for IPv6 prefixes for this
+            /// `multi_uniq_id` globally to Withdrawn. A global `Withdrawn`
+            /// status for a `multi_uniq_id` overrides the local status of
+            /// prefixes for this mui. However the local status can still be
+            /// modified. This modification will take effect if the global
+            /// status is changed to `Active`.
+            pub fn mark_mui_as_withdrawn_v6(
+                &self,
+                mui: u32
+            ) -> Result<(), PrefixStoreError> {
+                let guard = &epoch::pin();
+                
+                self.v6.store.mark_mui_as_withdrawn(
+                    mui,
+                    &guard
+                )
+            }
+
+
+            /// Change the status of all records for this `multi_uniq_id` to
+            /// Withdrawn.
+            ///
+            /// This method tries to mark all records: first the IPv4 records,
+            /// then the IPv6 records. If marking of the IPv4 records fails,
+            /// the method continues and tries to mark the IPv6 records. If
+            /// either or both fail, an error is returned.
+            pub fn mark_mui_as_withdrawn(
+                &self,
+                mui: u32
+            ) -> Result<(), PrefixStoreError> {
+                let guard = &epoch::pin();
+                
+                let res_v4 = self.v4.store.mark_mui_as_withdrawn(
+                    mui,
+                    &guard
+                );
+                let res_v6 = self.v6.store.mark_mui_as_withdrawn(
+                    mui,
+                    &guard
+                );
+
+                res_v4.and(res_v6)
+            }
+
+
+
             // Whether the global status for IPv4 prefixes and the specified
             // `multi_uniq_id` is set to `Withdrawn`.
             pub fn mui_is_withdrawn_v4(
