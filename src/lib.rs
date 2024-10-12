@@ -388,29 +388,29 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let store = quote! {
         /// A concurrently read/writable, lock-free Prefix Store, for use in a
-        /// multi-threaded context. 
-        /// 
+        /// multi-threaded context.
+        ///
         /// This store will hold records keyed on Prefix, and with values
         /// consisting of a multi-map (a map that can hold multiple values per
         /// key), filled with Records.
-        /// 
+        ///
         /// Records in the store contain the metadata, a `multi_uniq_id`,
         /// logical time (to disambiguate the order of inserts into the store)
         /// and the status of the Record.
-        /// 
+        ///
         /// Effectively this means that the store holds values for the set of
         /// `(prefix, multi_uniq_id)` pairs, where the primary key is the
         /// prefix, and the secondary key is the `multi_uniq_id`. These
         /// `multi_uniq_id`s are unique across all of the store. The store
         /// facilitates iterating over and changing the status for all
         /// prefixes per `multi_uniq_id`.
-        /// 
+        ///
         /// The store has the concept of a global status for a
         /// `multi_uniq_id`, e.g. to set all prefixes for a `multi_uniq_id` in
         /// one atomic transaction to withdrawn. It also has local statuses
         /// per `(prefix, multi_uniq_id)` pairs, e.g. to withdraw one value
         /// for a `multi_uniq_id`.
-        /// 
+        ///
         /// This way the store can hold RIBs for multiple peers in one
         /// data-structure.
         pub struct #store_name<
@@ -502,25 +502,25 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// less specifics for the requested prefix. The inclusion of more-
             /// or less-specifics and the requested `match_type` is configurable
             /// through the [MatchOptions] argument.
-            /// 
-            /// The `match_type` in the `MatchOptions` indicates what match 
-            /// types can appear in the [QueryResult] result. 
-            /// 
+            ///
+            /// The `match_type` in the `MatchOptions` indicates what match
+            /// types can appear in the [QueryResult] result.
+            ///
             /// `ExactMatch` is the most strict, and will only allow exactly
-            /// matching prefixes in the result. Failing an exacly matching 
+            /// matching prefixes in the result. Failing an exacly matching
             /// prefix, it will return an `EmptyMatch`.
-            /// 
+            ///
             /// `LongestMatch` is less strict, and either an exactly matching
             /// prefix or - in case there is no exact match - a longest matching
             /// prefix will be allowed in the result. Failing both an EmptyMatch
             /// will be returned.
-            /// 
-            /// For both `ExactMatch` and `LongestMatch` the 
+            ///
+            /// For both `ExactMatch` and `LongestMatch` the
             /// `include_less_specifics` and `include_more_specifics` options
             /// will be respected and the result will contain the more and less
-            /// specifics according to the options for the requested prefix, 
+            /// specifics according to the options for the requested prefix,
             /// even if the result returns a `match_type` of `EmptyMatch`.
-            /// 
+            ///
             /// `EmptyMatch` is the least strict, and will *always* return the
             /// requested prefix, be it exactly matching, longest matching or not
             /// matching at all (empty match), again, together with its less|more
@@ -528,21 +528,21 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// match in the result will never return less-specifics, but can
             /// return more-specifics for a prefix that itself is not present
             /// in the store.
-            /// 
-            /// 
+            ///
+            ///
             /// This table sums it up:
-            /// 
+            ///
             /// | query match_type | possible result types                      | less-specifics? | more-specifics? |
             /// | ---------------- | ------------------------------------------ | --------------- | --------------- |
             /// | `ExactMatch`     | `ExactMatch`, `EmptyMatch`                 | maybe           | maybe           |
             /// | `LongestMatch`   | `ExactMatch`, `LongestMatch`, `EmptyMatch` | maybe           | maybe           |
             /// | `EmptyMatch`     | `ExactMatch`, `LongestMatch`, `EmptyMatch` | no for EmptyM res, maybe for others | yes for EmptyM for res, maybe for others |
             ///
-            /// 
-            /// Note that the behavior of the CLI command `show route exact` on 
+            ///
+            /// Note that the behavior of the CLI command `show route exact` on
             /// most router platforms can be modeled by setting the `match_type`
             /// to `ExactMatch` and `include_less_specifics` to `true`.
-            /// 
+            ///
             /// # Example
             /// ```
             /// use std::net::Ipv4Addr;
@@ -552,7 +552,6 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// use rotonda_store::prelude::multi::*;
             ///
             /// let store = MultiThreadedStore::<PrefixAs>::new().unwrap();
-            /// let guard = &epoch::pin();
             ///
             /// let pfx_addr = "185.49.140.0".parse::<Ipv4Addr>()
             ///         .unwrap()
@@ -573,7 +572,6 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             ///         include_more_specifics: false,
             ///         mui: None
             ///     },
-            ///     guard
             /// );
             ///
             /// assert_eq!(res.prefix_meta[0].meta.0, 211321);
@@ -587,7 +585,6 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             ///             include_more_specifics: false,
             ///             mui: None
             ///         },
-            ///         guard
             ///     );
             ///
             /// assert!(res.match_type.is_empty());
@@ -597,7 +594,6 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 &'a self,
                 search_pfx: &Prefix,
                 options: &MatchOptions,
-                guard: &'a Guard,
             ) -> QueryResult<M> {
 
                 match search_pfx.addr() {
@@ -609,7 +605,6 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                             ),
                             options,
                             options.mui,
-                            guard
                         )
                     },
                     std::net::IpAddr::V6(addr) => self.v6.match_prefix_by_store_direct(
@@ -619,14 +614,13 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                         ),
                         options,
                         options.mui,
-                        guard
                     ),
                 }
             }
 
             /// Return the record that belongs to the pre-calculated and
             /// stored best path for a given prefix.
-            /// 
+            ///
             /// If the Prefix does not exist in the store `None` is returned.
             /// If the prefix does exist, but no best path was calculated
             /// (yet), a `PrefixStoreError::BestPathNotFound` error will be
@@ -635,7 +629,6 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// would indicate an internal inconsistency in the store.
             pub fn best_path(&'a self,
                 search_pfx: &Prefix,
-                guard: &Guard
             ) -> Option<Result<Record<M>, PrefixStoreError>> {
 
                 match search_pfx.addr() {
@@ -644,11 +637,10 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                             PrefixId::<IPv4>::new(
                                 addr.into(),
                                 search_pfx.len(),
-                            ),
-                            &guard)
+                            ))
                         .0
                         .map(|p_rec| unsafe { p_rec
-                            .get_path_selections(guard).best()
+                            .get_path_selections().best()
                             .map_or_else(
                                 || Err(PrefixStoreError::BestPathNotFound),
                                 |mui| p_rec.record_map
@@ -661,11 +653,10 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                             PrefixId::<IPv6>::new(
                                 addr.into(),
                                 search_pfx.len(),
-                            ),
-                            &guard)
+                            ))
                         .0
                         .map(|p_rec| unsafe { p_rec
-                            .get_path_selections(guard).best()
+                            .get_path_selections().best()
                             .map_or_else(
                                 || Err(PrefixStoreError::BestPathNotFound),
                                 |mui| p_rec.record_map
@@ -677,24 +668,23 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             }
 
             /// Calculate and store the best path for the specified Prefix.
-            /// 
+            ///
             /// If the result of the calculation is successful it will be
             /// stored for the prefix. If they were set, it will return the
             /// multi_uniq_id of the best path and the one for the backup
             /// path, respectively. If the prefix does not exist in the store,
             /// `None` will be returned. If the best path cannot be
-            /// calculated, a `Ok(None, None)` will be returned. 
-            /// 
+            /// calculated, a `Ok(None, None)` will be returned.
+            ///
             /// Failing to calculate a best path, may be caused by
             /// unavailability of any active paths, or by a lack of data (in
             /// either the paths, or the supplied `TiebreakerInfo`).
-            /// 
+            ///
             /// An Error result indicates an inconsistency in the store.
             pub fn calculate_and_store_best_and_backup_path(
-                &self, 
+                &self,
                 search_pfx: &Prefix,
                 tbi: &<M as Meta>::TBI,
-                guard: &Guard
             ) -> Result<(Option<u32>, Option<u32>), PrefixStoreError> {
                 match search_pfx.addr() {
                     std::net::IpAddr::V4(addr) => self.v4.store
@@ -702,24 +692,22 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                             PrefixId::<IPv4>::new(
                                 addr.into(),
                                 search_pfx.len(),
-                            ),
-                            guard
+                            )
                         ).0.map_or(
                             Err(PrefixStoreError::StoreNotReadyError),
                             |p_rec| p_rec.calculate_and_store_best_backup(
-                                tbi, guard), 
+                                tbi),
                         ),
                     std::net::IpAddr::V6(addr) => self.v6.store
                         .non_recursive_retrieve_prefix_with_guard(
                             PrefixId::<IPv6>::new(
                                 addr.into(),
                                 search_pfx.len(),
-                            ),
-                            guard
+                            )
                         ).0.map_or(
                             Err(PrefixStoreError::StoreNotReadyError),
                             |p_rec| p_rec.calculate_and_store_best_backup(
-                                tbi, guard), 
+                                tbi),
                         ),
                 }
             }
@@ -727,7 +715,6 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             pub fn is_ps_outdated(
                 &self,
                 search_pfx: &Prefix,
-                guard: &Guard
             ) -> Result<bool, PrefixStoreError> {
                 match search_pfx.addr() {
                     std::net::IpAddr::V4(addr) => self.v4.store
@@ -735,22 +722,20 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                             PrefixId::<IPv4>::new(
                                 addr.into(),
                                 search_pfx.len(),
-                            ),
-                            guard
+                            )
                         ).0.map_or(
                             Err(PrefixStoreError::StoreNotReadyError),
-                            |p| Ok(p.is_ps_outdated(guard))
+                            |p| Ok(p.is_ps_outdated())
                         ),
                     std::net::IpAddr::V6(addr) => self.v6.store
                         .non_recursive_retrieve_prefix_with_guard(
                             PrefixId::<IPv6>::new(
                                 addr.into(),
                                 search_pfx.len(),
-                            ),
-                            guard
+                            )
                         ).0.map_or(
                             Err(PrefixStoreError::StoreNotReadyError),
-                            |p| Ok(p.is_ps_outdated(guard))
+                            |p| Ok(p.is_ps_outdated())
                         )
                 }
             }
@@ -765,15 +750,10 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// more-specific prefixes exist for a non-existent
             /// `search_pfx` the iterator will yield these more-specific
             /// prefixes.
-            ///
-            /// The `guard` should be a `&epoch::pin()`. It allows the
-            /// QuerySet to contain references to the meta-data objects,
-            /// instead of cloning them into it.
             pub fn more_specifics_from(&'a self,
                 search_pfx: &Prefix,
                 mui: Option<u32>,
                 include_withdrawn: bool,
-                guard: &'a Guard,
             ) -> QueryResult<M> {
 
                 match search_pfx.addr() {
@@ -784,7 +764,6 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                         ),
                         mui,
                         include_withdrawn,
-                        guard
                     ),
                     std::net::IpAddr::V6(addr) => self.v6.more_specifics_from(
                         PrefixId::<IPv6>::new(
@@ -793,7 +772,6 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                         ),
                         mui,
                         include_withdrawn,
-                        guard
                     ),
                 }
             }
@@ -808,15 +786,10 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// less-specific prefixes exist for a non-existent
             /// `search_pfx` the iterator will yield these less-specific
             /// prefixes.
-            ///
-            /// The `guard` should be a `&epoch::pin()`. It allows the
-            /// QuerySet to contain references to the meta-data objects,
-            /// instead of cloning them into it.
             pub fn less_specifics_from(&'a self,
                 search_pfx: &Prefix,
                 mui: Option<u32>,
                 include_withdrawn: bool,
-                guard: &'a Guard,
             ) -> QueryResult<M> {
 
                 match search_pfx.addr() {
@@ -827,7 +800,6 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                         ),
                         mui,
                         include_withdrawn,
-                        guard
                     ),
                     std::net::IpAddr::V6(addr) => self.v6.less_specifics_from(
                         PrefixId::<IPv6>::new(
@@ -836,7 +808,6 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                         ),
                         mui,
                         include_withdrawn,
-                        guard
                     ),
                 }
             }
@@ -852,10 +823,6 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// `search_pfx` the iterator will yield these less-specific
             /// prefixes.
             ///
-            /// The `guard` should be a `&epoch::pin()`. It allows the
-            /// iterator to create and return references to the meta-data
-            /// objects to the caller (instead of cloning them).
-            ///
             /// # Example
             /// ```
             /// use std::net::Ipv4Addr;
@@ -866,7 +833,6 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             ///
             ///
             /// let store = MultiThreadedStore::<PrefixAs>::new().unwrap();
-            /// let guard = epoch::pin();
             ///
             /// let pfx_addr = "185.49.140.0".parse::<Ipv4Addr>()
             ///         .unwrap()
@@ -882,7 +848,6 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             ///     &Prefix::new(pfx_addr, 24).unwrap(),
             ///     None,
             ///     false,
-            ///     &guard
             /// ) {
             ///    assert_eq!(prefix_record.meta[0].meta.0, 211321);
             /// }
@@ -891,7 +856,6 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 search_pfx: &Prefix,
                 mui: Option<u32>,
                 include_withdrawn: bool,
-                guard: &'a Guard,
                 ) -> impl Iterator<Item=PrefixRecord<M>> + 'a {
                     let (left, right) = match search_pfx.addr() {
                         std::net::IpAddr::V4(addr) => {
@@ -903,7 +867,6 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                                         ),
                                         mui,
                                         include_withdrawn,
-                                        guard
                                     )
                                     .map(|p| PrefixRecord::from(p))
                                 ),
@@ -920,7 +883,6 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                                         ),
                                         mui,
                                         include_withdrawn,
-                                        guard
                                     )
                                     .map(|p| PrefixRecord::from(p))
                                 )
@@ -941,20 +903,15 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// `search_pfx` the iterator will yield these more-specific
             /// prefixes.
             ///
-            /// The `guard` should be a `&epoch::pin()`. It allows the
-            /// iterator to create and return references to the meta-data
-            /// objects to the caller (instead of cloning them).
-            ///
             /// # Example
             /// ```
             /// use std::net::Ipv4Addr;
             ///
             /// use rotonda_store::prelude::*;
-            /// use rotonda_store::prelude::multi::*;            
+            /// use rotonda_store::prelude::multi::*;
             /// use rotonda_store::meta_examples::PrefixAs;
             ///
             /// let store = MultiThreadedStore::<PrefixAs>::new().unwrap();
-            /// let guard = epoch::pin();
             ///
             /// let pfx_addr = "185.49.140.0".parse::<Ipv4Addr>()
             ///         .unwrap()
@@ -970,7 +927,6 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             ///     &Prefix::new(pfx_addr, 22).unwrap(),
             ///     None,
             ///     false,
-            ///     &guard
             /// ) {
             ///    assert_eq!(prefix_record.meta[0].meta.0, 211321);
             /// }
@@ -979,16 +935,11 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 search_pfx: &Prefix,
                 mui: Option<u32>,
                 include_withdrawn: bool,
-                guard: &'a Guard,
             ) -> impl Iterator<Item=PrefixRecord<M>> + 'a {
 
                 let (left, right) = match search_pfx.addr() {
-                    std::net::IpAddr::V4(addr) => {              
-                        let bmin = unsafe { 
-                            self.v4.store.withdrawn_muis_bmin.load(
-                                Ordering::Acquire, guard
-                            ).deref()
-                        };
+                    std::net::IpAddr::V4(addr) => {
+                        let bmin = self.v4.store.withdrawn_muis_bmin.lock().unwrap();
                         if mui.is_some() && bmin.contains(mui.unwrap()) {
                                 (None, None)
                             } else {
@@ -1000,7 +951,6 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                                             ),
                                             mui,
                                             include_withdrawn,
-                                            guard
                                         ).map(|p| PrefixRecord::from(p))
                                     ),
                                     None
@@ -1008,11 +958,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                             }
                         }
                     std::net::IpAddr::V6(addr) => {
-                        let bmin = unsafe { 
-                            self.v6.store.withdrawn_muis_bmin.load(
-                                Ordering::Acquire, guard
-                            ).deref()
-                        };
+                        let bmin = self.v6.store.withdrawn_muis_bmin.lock().unwrap();
                         if mui.is_some() && bmin.contains(mui.unwrap()) {
                             (None, None)
                         } else {
@@ -1025,7 +971,6 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                                         ),
                                         mui,
                                         include_withdrawn,
-                                        guard
                                     ).map(|p| PrefixRecord::from(p))
                                 )
                             )
@@ -1039,14 +984,9 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 &'a self,
                 mui: u32,
                 include_withdrawn: bool,
-                guard: &'a Guard
             ) -> impl Iterator<Item=PrefixRecord<M>> +'a {
-             
-                let bmin = unsafe { 
-                    self.v4.store.withdrawn_muis_bmin.load(
-                        Ordering::Acquire, guard
-                    ).deref()
-                };
+
+                let bmin = self.v4.store.withdrawn_muis_bmin.lock().unwrap();
 
                 if bmin.contains(mui) && !include_withdrawn {
                     None
@@ -1058,10 +998,9 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                                     0,
                                 ),
                                 Some(mui),
-                                include_withdrawn,
-                                guard
+                                include_withdrawn
                             ).map(|p| PrefixRecord::from(p))
-                    )    
+                    )
                 }.into_iter().flatten()
             }
 
@@ -1069,14 +1008,9 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 &'a self,
                 mui: u32,
                 include_withdrawn: bool,
-                guard: &'a Guard
             ) -> impl Iterator<Item=PrefixRecord<M>> +'a {
-             
-                let bmin = unsafe { 
-                    self.v4.store.withdrawn_muis_bmin.load(
-                        Ordering::Acquire, guard
-                    ).deref()
-                };
+
+                let bmin = self.v4.store.withdrawn_muis_bmin.lock().unwrap();
 
                 if bmin.contains(mui) && !include_withdrawn {
                     None
@@ -1089,23 +1023,22 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                                 ),
                                 Some(mui),
                                 include_withdrawn,
-                                guard
                             ).map(|p| PrefixRecord::from(p))
-                    )    
+                    )
                 }.into_iter().flatten()
             }
 
             /// Insert or replace a Record into the Store
-            /// 
+            ///
             /// The specified Record will replace an existing record in the
             /// store if the multi-map for the specified prefix already has an
             /// entry for the `multi_uniq_id`, otherwise it will be added to
             /// the multi-map.
-            /// 
+            ///
             /// If the `update_path_sections` argument is used the best path
             /// selection will be run on the resulting multi-map after insert
             /// and stored for the specified prefix.
-            /// 
+            ///
             /// Returns some metrics about the resulting insert.
             pub fn insert(
                 &self,
@@ -1139,10 +1072,6 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// it first iterates over all IPv4 addresses and then over all
             /// IPv6 addresses.
             ///
-            /// The `guard` should be a `&epoch::pin()`. It allows the
-            /// iterator to create and return references to the meta-data
-            /// objects to the caller (instead of cloning them).
-            ///
             /// # Example
             /// ```
             /// use std::net::Ipv4Addr;
@@ -1152,7 +1081,6 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// use rotonda_store::meta_examples::PrefixAs;
             ///
             /// let store = MultiThreadedStore::<PrefixAs>::new().unwrap();
-            /// let guard = epoch::pin();
             ///
             /// let pfx_addr = "185.49.140.0".parse::<Ipv4Addr>()
             ///         .unwrap()
@@ -1164,7 +1092,6 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// store.insert(&Prefix::new(pfx_addr, 24).unwrap(), our_asn.clone(), None);
             /// store.insert(&Prefix::new(pfx_addr, 25).unwrap(), our_asn, None);
             ///
-            /// let mut iter = store.prefixes_iter(&guard);
             ///
             /// assert_eq!(iter.next().unwrap().prefix,
             ///     Prefix::new(pfx_addr, 22).unwrap());
@@ -1177,12 +1104,11 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// ```
             pub fn prefixes_iter(
                 &'a self,
-                guard: &'a Guard
             ) -> impl Iterator<Item=PrefixRecord<M>> + 'a {
-                self.v4.store.prefixes_iter(guard)
+                self.v4.store.prefixes_iter()
                     .map(|p| PrefixRecord::from(p))
                     .chain(
-                        self.v6.store.prefixes_iter(guard)
+                        self.v6.store.prefixes_iter()
                         .map(|p| PrefixRecord::from(p))
                     )
             }
@@ -1190,10 +1116,6 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// Returns an unordered iterator over all IPv4 prefixes in the
             /// currently in the store, with any status (including Withdrawn),
             /// including meta-data.
-            ///
-            /// The `guard` should be a `&epoch::pin()`. It allows the
-            /// iterator to create and return references to the meta-data
-            /// objects to the caller (instead of cloning them).
             ///
             /// # Example
             /// ```
@@ -1204,7 +1126,6 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// use rotonda_store::meta_examples::PrefixAs;
             ///
             /// let store = MultiThreadedStore::<PrefixAs>::new().unwrap();
-            /// let guard = epoch::pin();
             ///
             /// let pfx_addr = "185.49.140.0".parse::<Ipv4Addr>()
             ///         .unwrap()
@@ -1216,7 +1137,6 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// store.insert(&Prefix::new(pfx_addr, 24).unwrap(), our_asn.clone(), None);
             /// store.insert(&Prefix::new(pfx_addr, 25).unwrap(), our_asn, None);
             ///
-            /// let mut iter = store.prefixes_iter(&guard);
             ///
             /// assert_eq!(iter.next().unwrap().prefix,
             ///     Prefix::new(pfx_addr, 22).unwrap());
@@ -1229,19 +1149,14 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// ```
             pub fn prefixes_iter_v4(
                 &'a self,
-                guard: &'a Guard
             ) -> impl Iterator<Item=PrefixRecord<M>> + 'a {
-                self.v4.store.prefixes_iter(guard)
+                self.v4.store.prefixes_iter()
                     .map(|p| PrefixRecord::from(p))
             }
 
             /// Returns an unordered iterator over all IPv6 prefixes in the
             /// currently in the store, with any status (including Withdrawn),
             /// including meta-data.
-            ///
-            /// The `guard` should be a `&epoch::pin()`. It allows the
-            /// iterator to create and return references to the meta-data
-            /// objects to the caller (instead of cloning them).
             ///
             /// # Example
             /// ```
@@ -1252,7 +1167,6 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// use rotonda_store::meta_examples::PrefixAs;
             ///
             /// let store = MultiThreadedStore::<PrefixAs>::new().unwrap();
-            /// let guard = epoch::pin();
             ///
             /// let pfx_addr = "2a04:b900::".parse::<Ipv6Addr>()
             ///         .unwrap()
@@ -1264,7 +1178,6 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// store.insert(&Prefix::new(pfx_addr, 56).unwrap(), our_asn.clone(), None);
             /// store.insert(&Prefix::new(pfx_addr, 64).unwrap(), our_asn, None);
             ///
-            /// let mut iter = store.prefixes_iter(&guard);
             ///
             /// assert_eq!(iter.next().unwrap().prefix,
             ///     Prefix::new(pfx_addr, 29).unwrap());
@@ -1277,9 +1190,8 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// ```
             pub fn prefixes_iter_v6(
                 &'a self,
-                guard: &'a Guard
             ) -> impl Iterator<Item=PrefixRecord<M>> + 'a {
-                self.v6.store.prefixes_iter(guard)
+                self.v6.store.prefixes_iter()
                     .map(|p| PrefixRecord::from(p))
             }
 
@@ -1292,20 +1204,17 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 prefix: &Prefix,
                 mui: u32
             ) -> Result<(), PrefixStoreError> {
-                let guard = &epoch::pin();
                 match prefix.addr() {
                     std::net::IpAddr::V4(addr) => {
                         self.v4.store.mark_mui_as_withdrawn_for_prefix(
                             PrefixId::<IPv4>::from(*prefix),
                             mui,
-                            &guard
                         )
                     }
                     std::net::IpAddr::V6(addr) => {
                         self.v6.store.mark_mui_as_withdrawn_for_prefix(
                             PrefixId::<IPv6>::from(*prefix),
                             mui,
-                            &guard
                         )
                     }
                 }
@@ -1320,20 +1229,17 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 prefix: &Prefix,
                 mui: u32
             ) -> Result<(), PrefixStoreError> {
-                let guard = &epoch::pin();
                 match prefix.addr() {
                     std::net::IpAddr::V4(addr) => {
                         self.v4.store.mark_mui_as_active_for_prefix(
                             PrefixId::<IPv4>::from(*prefix),
                             mui,
-                            &guard
                         )
                     }
                     std::net::IpAddr::V6(addr) => {
                         self.v6.store.mark_mui_as_active_for_prefix(
                             PrefixId::<IPv6>::from(*prefix),
                             mui,
-                            &guard
                         )
                     }
                 }
@@ -1347,11 +1253,9 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 &self,
                 mui: u32
             ) -> Result<(), PrefixStoreError> {
-                let guard = &epoch::pin();
-                
+
                 self.v4.store.mark_mui_as_active(
                     mui,
-                    &guard
                 )
             }
 
@@ -1365,11 +1269,9 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 &self,
                 mui: u32
             ) -> Result<(), PrefixStoreError> {
-                let guard = &epoch::pin();
-                
+
                 self.v4.store.mark_mui_as_withdrawn(
                     mui,
-                    &guard
                 )
             }
 
@@ -1381,11 +1283,9 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 &self,
                 mui: u32
             ) -> Result<(), PrefixStoreError> {
-                let guard = &epoch::pin();
-                
+
                 self.v6.store.mark_mui_as_active(
                     mui,
-                    &guard
                 )
             }
 
@@ -1399,11 +1299,9 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 &self,
                 mui: u32
             ) -> Result<(), PrefixStoreError> {
-                let guard = &epoch::pin();
-                
+
                 self.v6.store.mark_mui_as_withdrawn(
                     mui,
-                    &guard
                 )
             }
 
@@ -1419,15 +1317,12 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 &self,
                 mui: u32
             ) -> Result<(), PrefixStoreError> {
-                let guard = &epoch::pin();
-                
+
                 let res_v4 = self.v4.store.mark_mui_as_withdrawn(
                     mui,
-                    &guard
                 );
                 let res_v6 = self.v6.store.mark_mui_as_withdrawn(
                     mui,
-                    &guard
                 );
 
                 res_v4.and(res_v6)
@@ -1441,9 +1336,8 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 &self,
                 mui: u32
             ) -> bool {
-                let guard = &epoch::pin();
 
-                self.v4.store.mui_is_withdrawn(mui, guard)
+                self.v4.store.mui_is_withdrawn(mui)
             }
 
             // Whether the global status for IPv6 prefixes and the specified
@@ -1452,9 +1346,8 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                 &self,
                 mui: u32
             ) -> bool {
-                let guard = &epoch::pin();
 
-                self.v6.store.mui_is_withdrawn(mui, guard)
+                self.v6.store.mui_is_withdrawn(mui)
             }
 
             /// Returns the number of all prefixes in the store.
@@ -1477,7 +1370,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
 
             /// Returns the number of all IPv4 prefixes with the
             /// supplied prefix length in the store.
-            /// 
+            ///
             /// Note that this counter may be lower than the actual
             /// number in the store, due to contention at the time of
             /// reading the value.
@@ -1496,7 +1389,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
 
             /// Returns the number of all IPv6 prefixes with the
             /// supplied prefix length in the store.
-            /// 
+            ///
             /// Note that this counter may be lower than the actual
             /// number in the store, due to contention at the time of
             /// reading the value.
