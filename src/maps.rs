@@ -28,34 +28,44 @@ pub fn node_buckets_map_v4() -> quote::__private::TokenStream {
     quote! {
 
     fn len_to_store_bits(len: u8, lvl: u8) -> u8 {
-        match len {
-            l if l <= 12 => {
-                if lvl > 0 {
-                    0
-                } else {
-                    len
-                }
-            }
-            l if l < 16 => {
-                if lvl > 1 {
-                    0
-                } else {
-                    12 * if lvl == 0 { 1 } else { lvl } + lvl * (len - 12)
-                }
-            }
-            _ => {
-                let res = 4 * (lvl + 1);
-                if res < len {
-                    res
-                } else {
-                    if res >= len + 4 {
-                         0
-                    } else {
-                        len
-                    }
-                }
+        let res = 4 * (lvl + 1);
+        if res < len {
+            res
+        } else {
+           if res >= len + 4 {
+                0
+            } else {
+                len
             }
         }
+        // match len {
+        //     l if l <= 12 => {
+        //         if lvl > 0 {
+        //             0
+        //         } else {
+        //             len
+        //         }
+        //     }
+        //     l if l < 16 => {
+        //         if lvl > 1 {
+        //             0
+        //         } else {
+        //             12 * if lvl == 0 { 1 } else { lvl } + lvl * (len - 12)
+        //         }
+        //     }
+        //     _ => {
+        //         let res = 4 * (lvl + 1);
+        //         if res < len {
+        //             res
+        //         } else {
+        //             if res >= len + 4 {
+        //                  0
+        //             } else {
+        //                 len
+        //             }
+        //         }
+        //     }
+        // }
     }
 
     // fn len_to_store_bits_old(len: u8, level: u8) -> u8 {
@@ -104,34 +114,44 @@ pub fn prefix_buckets_map_v4() -> quote::__private::TokenStream {
     quote! {
 
         fn get_bits_for_len(len: u8, lvl: u8) -> u8 {
-            match len {
-                l if l <= 12 => {
-                    if lvl > 0 {
-                        0
-                    } else {
-                        len
-                    }
-                }
-                l if l < 16 => {
-                    if lvl > 1 {
-                        0
-                    } else {
-                        12 * if lvl == 0 { 1 } else { lvl } + lvl * (len - 12)
-                    }
-                }
-                _ => {
-                    let res = 4 * (lvl + 1);
-                    if res < len {
-                        res
-                    } else {
-                        if res >= len + 4 {
-                             0
-                        } else {
-                            len
-                        }
-                    }
+            let res = 4 * (lvl + 1);
+            if res < len {
+                res
+            } else {
+                if res >= len + 4 {
+                    0
+                } else {
+                    len
                 }
             }
+            // match len {
+            //     l if l <= 12 => {
+            //         if lvl > 0 {
+            //             0
+            //         } else {
+            //             len
+            //         }
+            //     }
+            //     l if l < 16 => {
+            //         if lvl > 1 {
+            //             0
+            //         } else {
+            //             12 * if lvl == 0 { 1 } else { lvl } + lvl * (len - 12)
+            //         }
+            //     }
+            //     _ => {
+            //         let res = 4 * (lvl + 1);
+            //         if res < len {
+            //             res
+            //         } else {
+            //             if res >= len + 4 {
+            //                  0
+            //             } else {
+            //                 len
+            //             }
+            //         }
+            //     }
+            // }
         }
 
         // fn get_bits_for_len_old(len: u8, level: u8) -> u8 {
@@ -180,30 +200,37 @@ pub fn node_buckets_map_v6() -> quote::__private::TokenStream {
     quote! {
 
         fn len_to_store_bits(len: u8, lvl: u8) -> u8 {
-            match len {
-                l if l <= 12 => if lvl > 0 { 0 } else { len },
-                l if l <= 24 => if lvl > 1 { 0 } else {
-                    12 * if lvl == 0 { 1 } else { lvl } + lvl * (len - 12)
-                    },
-                l if l <= 36 => { if lvl > 2 { 0 } else {
-                    12 * if lvl <= 1 { lvl + 1 } else { 2 }
-                        + if lvl == 0 { 0 } else { lvl - 1 } * (len - 24)
-                    }
-                }
-                l if l <= 48 => { if lvl > 3 { 0 } else {
-                        12 * if lvl <= 2 { lvl + 1 } else { 3 }
-                        + if lvl < 2 { 0 } else { lvl - 2 } * (len - 36)
-                    }
-                }
-                _ => {
-                    let res = 8 * (lvl + 1);
-                    if res < len {
-                        res
-                    } else {
-                        if res >= len + 8 { 0 } else { len }
-                    }
-                }
+            let res = 4 * (lvl + 1);
+            if res < len {
+                res
+            } else {
+                if res >= len + 4 { 0 } else { len }
             }
+
+            // match len {
+            //     l if l <= 12 => if lvl > 0 { 0 } else { len },
+            //     l if l <= 24 => if lvl > 1 { 0 } else {
+            //         12 * if lvl == 0 { 1 } else { lvl } + lvl * (len - 12)
+            //         },
+            //     l if l <= 36 => { if lvl > 2 { 0 } else {
+            //         12 * if lvl <= 1 { lvl + 1 } else { 2 }
+            //             + if lvl == 0 { 0 } else { lvl - 1 } * (len - 24)
+            //         }
+            //     }
+            //     l if l <= 48 => { if lvl > 3 { 0 } else {
+            //             12 * if lvl <= 2 { lvl + 1 } else { 3 }
+            //             + if lvl < 2 { 0 } else { lvl - 2 } * (len - 36)
+            //         }
+            //     }
+            //     _ => {
+            //         let res = 8 * (lvl + 1);
+            //         if res < len {
+            //             res
+            //         } else {
+            //             if res >= len + 8 { 0 } else { len }
+            //         }
+            //     }
+            // }
         }
 
         // fn len_to_store_bits_old(len: u8, level: u8) -> u8 {
@@ -348,30 +375,37 @@ pub fn prefix_buckets_map_v6() -> quote::__private::TokenStream {
     quote! {
 
         fn get_bits_for_len(len: u8, lvl: u8) -> u8 {
-            match len {
-                l if l <= 12 => if lvl > 0 { 0 } else { len },
-                l if l <= 24 => if lvl > 1 { 0 } else {
-                    12 * if lvl == 0 { 1 } else { lvl } + lvl * (len - 12)
-                    },
-                l if l <= 36 => { if lvl > 2 { 0 } else {
-                    12 * if lvl <= 1 { lvl + 1 } else { 2 }
-                        + if lvl == 0 { 0 } else { lvl - 1 } * (len - 24)
-                    }
-                }
-                l if l <= 48 => { if lvl > 3 { 0 } else {
-                        12 * if lvl <= 2 { lvl + 1 } else { 3 }
-                        + if lvl < 2 { 0 } else { lvl - 2 } * (len - 36)
-                    }
-                }
-                _ => {
-                    let res = 8 * (lvl + 1);
-                    if res < len {
-                        res
-                    } else {
-                        if res >= len + 8 { 0 } else { len }
-                    }
-                }
+            let res = 4 * (lvl + 1);
+            if res < len {
+                res
+            } else {
+                if res >= len + 4 { 0 } else { len }
             }
+
+            // match len {
+            //     l if l <= 12 => if lvl > 0 { 0 } else { len },
+            //     l if l <= 24 => if lvl > 1 { 0 } else {
+            //         12 * if lvl == 0 { 1 } else { lvl } + lvl * (len - 12)
+            //         },
+            //     l if l <= 36 => { if lvl > 2 { 0 } else {
+            //         12 * if lvl <= 1 { lvl + 1 } else { 2 }
+            //             + if lvl == 0 { 0 } else { lvl - 1 } * (len - 24)
+            //         }
+            //     }
+            //     l if l <= 48 => { if lvl > 3 { 0 } else {
+            //             12 * if lvl <= 2 { lvl + 1 } else { 3 }
+            //             + if lvl < 2 { 0 } else { lvl - 2 } * (len - 36)
+            //         }
+            //     }
+            //     _ => {
+            //         let res = 8 * (lvl + 1);
+            //         if res < len {
+            //             res
+            //         } else {
+            //             if res >= len + 8 { 0 } else { len }
+            //         }
+            //     }
+            // }
         }
 
         // fn get_bits_for_len_old(len: u8, level: u8) -> u8 {
