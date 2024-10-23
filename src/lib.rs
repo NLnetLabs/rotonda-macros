@@ -1164,7 +1164,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// store.insert(&Prefix::new(pfx_addr, 24).unwrap(), our_asn.clone(), None);
             /// store.insert(&Prefix::new(pfx_addr, 25).unwrap(), our_asn, None);
             ///
-            /// let mut iter = store.prefixes_iter(&guard);
+            /// let mut iter = store.prefixes_iter();
             ///
             /// assert_eq!(iter.next().unwrap().prefix,
             ///     Prefix::new(pfx_addr, 22).unwrap());
@@ -1177,12 +1177,11 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// ```
             pub fn prefixes_iter(
                 &'a self,
-                guard: &'a Guard
             ) -> impl Iterator<Item=PrefixRecord<M>> + 'a {
-                self.v4.store.prefixes_iter(guard)
+                self.v4.store.prefixes_iter()
                     .map(|p| PrefixRecord::from(p))
                     .chain(
-                        self.v6.store.prefixes_iter(guard)
+                        self.v6.store.prefixes_iter()
                         .map(|p| PrefixRecord::from(p))
                     )
             }
@@ -1216,7 +1215,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// store.insert(&Prefix::new(pfx_addr, 24).unwrap(), our_asn.clone(), None);
             /// store.insert(&Prefix::new(pfx_addr, 25).unwrap(), our_asn, None);
             ///
-            /// let mut iter = store.prefixes_iter(&guard);
+            /// let mut iter = store.prefixes_iter();
             ///
             /// assert_eq!(iter.next().unwrap().prefix,
             ///     Prefix::new(pfx_addr, 22).unwrap());
@@ -1229,9 +1228,8 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// ```
             pub fn prefixes_iter_v4(
                 &'a self,
-                guard: &'a Guard
             ) -> impl Iterator<Item=PrefixRecord<M>> + 'a {
-                self.v4.store.prefixes_iter(guard)
+                self.v4.store.prefixes_iter()
                     .map(|p| PrefixRecord::from(p))
             }
 
@@ -1264,7 +1262,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// store.insert(&Prefix::new(pfx_addr, 56).unwrap(), our_asn.clone(), None);
             /// store.insert(&Prefix::new(pfx_addr, 64).unwrap(), our_asn, None);
             ///
-            /// let mut iter = store.prefixes_iter(&guard);
+            /// let mut iter = store.prefixes_iter();
             ///
             /// assert_eq!(iter.next().unwrap().prefix,
             ///     Prefix::new(pfx_addr, 29).unwrap());
@@ -1277,9 +1275,8 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             /// ```
             pub fn prefixes_iter_v6(
                 &'a self,
-                guard: &'a Guard
             ) -> impl Iterator<Item=PrefixRecord<M>> + 'a {
-                self.v6.store.prefixes_iter(guard)
+                self.v6.store.prefixes_iter()
                     .map(|p| PrefixRecord::from(p))
             }
 
