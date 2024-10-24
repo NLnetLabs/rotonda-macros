@@ -640,7 +640,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
 
                 match search_pfx.addr() {
                     std::net::IpAddr::V4(addr) => self.v4.store
-                        .non_recursive_retrieve_prefix_with_guard(
+                        .non_recursive_retrieve_prefix(
                             PrefixId::<IPv4>::new(
                                 addr.into(),
                                 search_pfx.len(),
@@ -657,7 +657,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                             )
                         }),
                     std::net::IpAddr::V6(addr) => self.v6.store
-                        .non_recursive_retrieve_prefix_with_guard(
+                        .non_recursive_retrieve_prefix(
                             PrefixId::<IPv6>::new(
                                 addr.into(),
                                 search_pfx.len(),
@@ -698,7 +698,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             ) -> Result<(Option<u32>, Option<u32>), PrefixStoreError> {
                 match search_pfx.addr() {
                     std::net::IpAddr::V4(addr) => self.v4.store
-                        .non_recursive_retrieve_prefix_with_guard(
+                        .non_recursive_retrieve_prefix(
                             PrefixId::<IPv4>::new(
                                 addr.into(),
                                 search_pfx.len(),
@@ -710,7 +710,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                                 tbi, guard),
                         ),
                     std::net::IpAddr::V6(addr) => self.v6.store
-                        .non_recursive_retrieve_prefix_with_guard(
+                        .non_recursive_retrieve_prefix(
                             PrefixId::<IPv6>::new(
                                 addr.into(),
                                 search_pfx.len(),
@@ -731,7 +731,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
             ) -> Result<bool, PrefixStoreError> {
                 match search_pfx.addr() {
                     std::net::IpAddr::V4(addr) => self.v4.store
-                        .non_recursive_retrieve_prefix_with_guard(
+                        .non_recursive_retrieve_prefix(
                             PrefixId::<IPv4>::new(
                                 addr.into(),
                                 search_pfx.len(),
@@ -742,7 +742,7 @@ pub fn create_store(attr: TokenStream, item: TokenStream) -> TokenStream {
                             |p| Ok(p.is_ps_outdated(guard))
                         ),
                     std::net::IpAddr::V6(addr) => self.v6.store
-                        .non_recursive_retrieve_prefix_with_guard(
+                        .non_recursive_retrieve_prefix(
                             PrefixId::<IPv6>::new(
                                 addr.into(),
                                 search_pfx.len(),
